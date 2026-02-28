@@ -113,3 +113,22 @@ body {
 .shadow-card {
   box-shadow: 0 0 12px rgba(0,0,0,0.05);
 }
+
+/* ── Scrollbar 樣式：淺色、無箭頭 ── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #dcdfe6;
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #c0c4cc;
+}
+::-webkit-scrollbar-button {
+  display: none;
+}

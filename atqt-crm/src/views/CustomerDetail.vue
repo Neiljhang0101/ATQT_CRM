@@ -80,8 +80,8 @@ function formatNumber(n) {
     <div class="flex flex-row items-center justify-between gap-4 flex-wrap shrink-0">
       <div class="flex items-center gap-2 text-sm" style="color:#909399;">
         <button
-          class="w-8 h-8 flex items-center justify-center rounded-full transition-colors hover:bg-[#e6f0ff] hover:text-[#409EFF] flex-shrink-0"
-          style="background:#f5f7fa;border:1px solid #e4e7ed;color:#606266;"
+          class="w-10 h-10 flex items-center justify-center rounded-full transition-colors hover:bg-[#e6f0ff] hover:text-[#409EFF] flex-shrink-0"
+          style="background:#fff;border:1px solid #e4e7ed;color:#606266;"
           @click="router.back()"
         >
           <span class="material-symbols-outlined text-[18px]">arrow_back</span>
@@ -269,6 +269,11 @@ function formatNumber(n) {
           </div>
         </div>
 
+      </div>
+
+      <!-- 右側：CRM 指標 + 備註 -->
+      <div class="w-full lg:w-96 flex-shrink-0 flex flex-col gap-5">
+
         <!-- CRM Metrics & Tags -->
         <div class="bg-white rounded-md" style="border:1px solid #e4e7ed;box-shadow:0 0 12px rgba(0,0,0,0.05);">
           <div class="px-5 py-4 flex items-center gap-2" style="border-bottom:1px solid #e4e7ed;">
@@ -277,8 +282,8 @@ function formatNumber(n) {
           </div>
           <div class="p-5">
             <template v-if="!editing">
-              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-y-5 gap-x-8">
-                <div>
+              <div class="grid grid-cols-2 gap-y-5 gap-x-4">
+                <div class="col-span-2">
                   <div class="text-sm mb-2" style="color:#606266;">RFM 分數</div>
                   <div v-if="user.rfm_score" class="flex items-center gap-2">
                     <span class="px-2 py-0.5 rounded text-sm font-bold" style="background:rgba(103,194,58,0.1);color:#67C23A;border:1px solid rgba(103,194,58,0.2);">R: {{ user.rfm_score.r }}</span>
@@ -290,7 +295,7 @@ function formatNumber(n) {
                 <div><div class="text-sm mb-1" style="color:#606266;">指標版本</div><div class="font-medium" style="color:#303133;">{{ user.indicator_version || '--' }}</div></div>
                 <div><div class="text-sm mb-1" style="color:#606266;">社群互動</div><div class="font-medium" style="color:#303133;">{{ user.community_interaction || '--' }}</div></div>
                 <div><div class="text-sm mb-1" style="color:#606266;">RFM 受眾標籤</div><div class="font-medium" style="color:#303133;">{{ user.rfm_score_tag || '--' }}</div></div>
-                <div class="md:col-span-2 lg:col-span-3">
+                <div class="col-span-2">
                   <div class="text-sm mb-2" style="color:#606266;">備註標籤</div>
                   <div class="flex flex-wrap gap-2">
                     <template v-if="user.note_tags && user.note_tags.length">
@@ -304,7 +309,7 @@ function formatNumber(n) {
               </div>
             </template>
             <template v-else>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="grid grid-cols-2 gap-4">
                 <div><label class="block text-sm mb-1" style="color:#606266;">RFM 受眾標籤</label><el-input v-model="editForm.rfm_score_tag" size="large" /></div>
                 <div><label class="block text-sm mb-1" style="color:#606266;">指標版本</label><el-input v-model="editForm.indicator_version" size="large" /></div>
                 <div><label class="block text-sm mb-1" style="color:#606266;">社群互動</label><el-input v-model="editForm.community_interaction" size="large" /></div>
@@ -314,11 +319,8 @@ function formatNumber(n) {
           </div>
         </div>
 
-      </div>
-
-      <!-- 右側：備註 + 快捷操作 -->
-      <div class="w-full lg:w-96 flex-shrink-0 flex flex-col gap-5">
-        <div class="bg-white rounded-md flex flex-col" style="border:1px solid #e4e7ed;box-shadow:0 0 12px rgba(0,0,0,0.05);min-height:420px;">
+        <!-- Notes -->
+        <div class="bg-white rounded-md flex flex-col" style="border:1px solid #e4e7ed;box-shadow:0 0 12px rgba(0,0,0,0.05);">
 
           <!-- Notes Header -->
           <div class="px-5 py-4 flex items-center justify-between" style="border-bottom:1px solid #e4e7ed;background:#f5f7fa;border-radius:4px 4px 0 0;">
@@ -363,27 +365,6 @@ function formatNumber(n) {
             </div>
           </div>
 
-          <!-- Quick Actions -->
-          <div class="p-5" style="border-top:1px solid #e4e7ed;background:#f5f7fa;border-radius:0 0 4px 4px;">
-            <h4 class="text-sm font-bold uppercase tracking-wider mb-3" style="color:#1a1d23;">快捷操作</h4>
-            <div class="grid grid-cols-2 gap-3">
-              <button
-                class="flex items-center justify-center gap-2 py-2.5 rounded-md text-sm transition-colors"
-                style="background:#fff;border:1px solid #e4e7ed;color:#606266;"
-                @click="$router.push('/crm')"
-              >
-                <span class="material-symbols-outlined text-[18px]">table_view</span> 回總表
-              </button>
-              <button
-                class="flex items-center justify-center gap-2 py-2.5 rounded-md text-sm transition-colors"
-                style="background:#fff;border:1px solid #e4e7ed;color:#606266;"
-                @click="!editing ? startEdit() : saveEdit()"
-              >
-                <span class="material-symbols-outlined text-[18px]">{{ editing ? 'save' : 'edit' }}</span>
-                {{ editing ? '儲存' : '編輯' }}
-              </button>
-            </div>
-          </div>
         </div>
       </div>
 

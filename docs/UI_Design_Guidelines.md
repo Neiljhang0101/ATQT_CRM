@@ -124,21 +124,21 @@
 
 ### 表單元件高度 (Form Control Height)
 
-> **全站所有輸入欄位統一高度 32px（Element Plus `size="default"`）。**
+> **全站所有輸入欄位統一高度 40px（Element Plus `size="large"`）。**
 
 | 元件 | 設定方式 | 高度 |
 |---|---|---|
-| `<el-input>` | 不加 `size` 屬性（使用 EP default） | **32px** |
-| `<el-select>` | 不加 `size` 屬性（使用 EP default） | **32px** |
-| `<el-input-number>` | `size="default"` | **32px** |
-| `<el-form>` 表單層級 | `size="default"` | 套用至所有子元件 |
-| 原生 `<input>` (disabled) | `style="height:32px;"` | **32px** |
+| `<el-input>` | `size="large"` | **40px** |
+| `<el-select>` | `size="large"` | **40px** |
+| `<el-input-number>` | `size="large"` | **40px** |
+| `<el-form>` 表單層級 | `size="large"` | 套用至所有子元件 |
+| 原生 `<input>` (disabled) | `style="height:40px;"` | **40px** |
 
 **守則：**
-1. **禁止**在表單欄位使用 `size="small"`（= 24px）或 `size="large"`（= 40px）。
-2. 在 `<el-form>` 上設定 `size="default"` 可讓所有子元件繼承，無須逐一設定。
-3. 若使用原生 `<input>`（如 disabled 欄位），必須手動加上 `style="height:32px;"` 對齊。
-4. 對應 Element Plus 尺寸表：`large`=40px、**`default`=32px**、`small`=24px。
+1. **禁止**在表單欄位使用 `size="small"`（= 24px）或 `size="default"`（= 32px）。
+2. 在 `<el-form>` 上設定 `size="large"` 可讓所有子元件繼承，無須逐一設定。
+3. 若使用原生 `<input>`（如 disabled 欄位），必須手動加上 `style="height:40px;"` 對齊。
+4. 對應 Element Plus 尺寸表：**`large`=40px**、`default`=32px、`small`=24px。
 
 ---
 

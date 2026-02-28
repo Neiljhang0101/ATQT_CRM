@@ -293,7 +293,47 @@
 1. **禁止**使用 PowerShell `Set-Content` 或 `Out-File` 寫入含中文的原始碼檔案。
 2. 需要用腳本批次修改原始碼時，**一律使用 Node.js `.cjs` 腳本** + `fs.writeFileSync(..., 'utf8')`。
 3. Node.js `.mjs` / ES Module 腳本中，**禁止**在 template literal（backtick 字串）內直接放 `</script>` — 會觸發 V8 解析錯誤 `SyntaxError: Invalid regular expression: missing /`。請改用字串拼接：`'<' + '/script>'`。
-4. 每次修改 `.vue` 檔案後，立即執行 `npm run dev` 確認 Vite 無錯誤輸出，不要等到多個修改後才驗證。
+4. 每次修改 `.vue` 檔案後，立即執行 `npm run build` 確認無錯誤，不要等到多個修改後才驗證。
+5. **禁止**用 regex 對 Vue/HTML 標籤進行結構性修改（新增屬性、移除屬性等）。原因見下方「Regex 修改標籤屬性的陷阱」。
+
+### Regex 修改標籤屬性的陷阱
+
+> **事故紀錄（2026-02-28）**：使用 `String.replace(/\<el-input([^>]*?)>/g, ...)` 批次加入 `size="large"` 時，self-closing tag（`<el-input ... />`）的結尾 `/` 被 `[^>]*?` 捕獲為屬性的一部分，導致輸出變成：
+> ```html
+> <!-- 期望 -->
+> <el-input v-model="x" size="large" />
+> <!-- 實際產生（錯誤）-->
+> <el-input v-model="x" / size="large">
+> ```
+> 這使 Vue template compiler 拋出 `SyntaxError: Illegal '/' in tags`，build 失敗。
+
+**根本原因：** `[^>]*?` 在 self-closing tag 中會把 `/` 吃進屬性字串，破壞標籤結構。
+
+**正確做法（二擇一）：**
+
+**方法 A — 用精確字串比對（`split/join`），完全不用 regex：**
+```js
+// 安全：只替換你明確知道會出現的字串
+content = content.split('<el-input v-model="editForm.line_name">')
+                 .join('<el-input v-model="editForm.line_name" size="large" />');
+```
+
+**方法 B — Regex 同時處理 self-closing 與非 self-closing，並在替換時還原 `/`：**
+```js
+// 正確的 regex：分開捕獲 closing slash
+content = content.replace(
+  /<el-(input|select|input-number)((?:[^>](?!\/))*?)(\/?)>/g,
+  (m, tag, attrs, slash) => {
+    if (attrs.includes('size=')) return m; // 已有 size，跳過
+    return `<el-${tag}${attrs} size="large"${slash ? ' /' : ''}>`;
+  }
+);
+```
+
+**守則：**
+1. 對 Vue template 做屬性新增／移除時，**優先使用精確字串比對**，比 regex 更可預期。
+2. 若必須用 regex，**務必明確處理 self-closing `/>`** — 用獨立捕獲群組 `(\/?)` 保留結尾斜線。
+3. 腳本執行後，立即 `npm run build` 驗證，出錯時有 git commit 可以 `git checkout` 還原。
 
 ### 緊急修復流程
 

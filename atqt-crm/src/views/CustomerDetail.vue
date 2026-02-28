@@ -197,25 +197,25 @@ function formatNumber(n) {
             </template>
             <template v-else>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div><label class="block text-xs mb-1" style="color:#909399;">BingX UID</label><input :value="editForm.uid" disabled class="w-full px-3 py-2 rounded text-sm" style="background:#f5f7fa;border:1px solid #e4e7ed;color:#909399;" /></div>
+                <div><label class="block text-xs mb-1" style="color:#909399;">BingX UID</label><input :value="editForm.uid" disabled class="w-full px-3 py-2 rounded text-sm" style="background:#f5f7fa;border:1px solid #e4e7ed;color:#909399;height:32px;" /></div>
                 <div><label class="block text-xs mb-1" style="color:#909399;">帳號類型</label>
-                  <el-select v-model="editForm.account_type" clearable size="small" style="width:100%">
+                  <el-select v-model="editForm.account_type" clearable style="width:100%">
                     <el-option label="新帳號" value="new" /><el-option label="舊帳號" value="old" />
                   </el-select>
                 </div>
                 <div><label class="block text-xs mb-1" style="color:#909399;">邀請類型</label>
-                  <el-select v-model="editForm.invite_type" clearable size="small" style="width:100%">
+                  <el-select v-model="editForm.invite_type" clearable style="width:100%">
                     <el-option label="直接邀請" value="直接邀請" /><el-option label="間接邀請" value="間接邀請" />
                   </el-select>
                 </div>
-                <div><label class="block text-xs mb-1" style="color:#909399;">邀請人 UID</label><el-input v-model="editForm.inviter_uid_code" size="small" /></div>
-                <div><label class="block text-xs mb-1" style="color:#909399;">已綁定邀請碼</label><el-input v-model="editForm.bound_invite_code" size="small" /></div>
-                <div><label class="block text-xs mb-1" style="color:#909399;">他的推廣邀請碼</label><el-input v-model="editForm.own_promo_code" size="small" /></div>
-                <div><label class="block text-xs mb-1" style="color:#909399;">邀請人 LINE 暱稱</label><el-input v-model="editForm.inviter_line_name" size="small" /></div>
-                <div><label class="block text-xs mb-1" style="color:#909399;">LINE 暱稱</label><el-input v-model="editForm.line_name" size="small" /></div>
-                <div><label class="block text-xs mb-1" style="color:#909399;">官網信箱</label><el-input v-model="editForm.official_email" size="small" /></div>
-                <div><label class="block text-xs mb-1" style="color:#909399;">TradingView 帳號</label><el-input v-model="editForm.tradingview_account" size="small" /></div>
-                <div><label class="block text-xs mb-1" style="color:#909399;">BingX 註冊日期</label><el-input v-model="editForm.bingx_register_date" placeholder="YYYY-MM-DD HH:mm:ss" size="small" /></div>
+                <div><label class="block text-xs mb-1" style="color:#909399;">邀請人 UID</label><el-input v-model="editForm.inviter_uid_code" /></div>
+                <div><label class="block text-xs mb-1" style="color:#909399;">已綁定邀請碼</label><el-input v-model="editForm.bound_invite_code" /></div>
+                <div><label class="block text-xs mb-1" style="color:#909399;">他的推廣邀請碼</label><el-input v-model="editForm.own_promo_code" /></div>
+                <div><label class="block text-xs mb-1" style="color:#909399;">邀請人 LINE 暱稱</label><el-input v-model="editForm.inviter_line_name" /></div>
+                <div><label class="block text-xs mb-1" style="color:#909399;">LINE 暱稱</label><el-input v-model="editForm.line_name" /></div>
+                <div><label class="block text-xs mb-1" style="color:#909399;">官網信箱</label><el-input v-model="editForm.official_email" /></div>
+                <div><label class="block text-xs mb-1" style="color:#909399;">TradingView 帳號</label><el-input v-model="editForm.tradingview_account" /></div>
+                <div><label class="block text-xs mb-1" style="color:#909399;">BingX 註冊日期</label><el-input v-model="editForm.bingx_register_date" placeholder="YYYY-MM-DD HH:mm:ss" /></div>
               </div>
             </template>
           </div>
@@ -259,11 +259,11 @@ function formatNumber(n) {
             </template>
             <template v-else>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div><label class="block text-xs mb-1" style="color:#909399;">近期交易量(U)</label><el-input-number v-model="editForm.volume_recent" :precision="2" :step="1000" size="small" style="width:100%" /></div>
-                <div><label class="block text-xs mb-1" style="color:#909399;">總資產(U)</label><el-input-number v-model="editForm.total_assets" :precision="2" :step="100" size="small" style="width:100%" /></div>
-                <div><label class="block text-xs mb-1" style="color:#909399;">BingX VIP 等級</label><el-input v-model="editForm.bingx_vip_level" placeholder="例?0 / Lv1" size="small" /></div>
-                <div><label class="block text-xs mb-1" style="color:#909399;">首次入金日</label><el-input v-model="editForm.first_deposit_time" placeholder="YYYY-MM-DD" size="small" /></div>
-                <div><label class="block text-xs mb-1" style="color:#909399;">最後交易日</label><el-input v-model="editForm.last_trade_date" placeholder="YYYY-MM-DD" size="small" /></div>
+                <div><label class="block text-xs mb-1" style="color:#909399;">近期交易量(U)</label><el-input-number v-model="editForm.volume_recent" :precision="2" :step="1000" style="width:100%" /></div>
+                <div><label class="block text-xs mb-1" style="color:#909399;">總資產(U)</label><el-input-number v-model="editForm.total_assets" :precision="2" :step="100" style="width:100%" /></div>
+                <div><label class="block text-xs mb-1" style="color:#909399;">BingX VIP 等級</label><el-input v-model="editForm.bingx_vip_level" placeholder="例?0 / Lv1" /></div>
+                <div><label class="block text-xs mb-1" style="color:#909399;">首次入金日</label><el-input v-model="editForm.first_deposit_time" placeholder="YYYY-MM-DD" /></div>
+                <div><label class="block text-xs mb-1" style="color:#909399;">最後交易日</label><el-input v-model="editForm.last_trade_date" placeholder="YYYY-MM-DD" /></div>
               </div>
             </template>
           </div>
@@ -305,10 +305,10 @@ function formatNumber(n) {
             </template>
             <template v-else>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div><label class="block text-xs mb-1" style="color:#909399;">RFM 受眾標籤</label><el-input v-model="editForm.rfm_score_tag" size="small" /></div>
-                <div><label class="block text-xs mb-1" style="color:#909399;">指標版本</label><el-input v-model="editForm.indicator_version" size="small" /></div>
-                <div><label class="block text-xs mb-1" style="color:#909399;">社群互動</label><el-input v-model="editForm.community_interaction" size="small" /></div>
-                <div><label class="block text-xs mb-1" style="color:#909399;">備註標籤（逗號分隔）</label><el-input v-model="editForm._note_tags_str" placeholder="例：高活躍、活躍" size="small" /></div>
+                <div><label class="block text-xs mb-1" style="color:#909399;">RFM 受眾標籤</label><el-input v-model="editForm.rfm_score_tag" /></div>
+                <div><label class="block text-xs mb-1" style="color:#909399;">指標版本</label><el-input v-model="editForm.indicator_version" /></div>
+                <div><label class="block text-xs mb-1" style="color:#909399;">社群互動</label><el-input v-model="editForm.community_interaction" /></div>
+                <div><label class="block text-xs mb-1" style="color:#909399;">備註標籤（逗號分隔）</label><el-input v-model="editForm._note_tags_str" placeholder="例：高活躍、活躍" /></div>
               </div>
             </template>
           </div>

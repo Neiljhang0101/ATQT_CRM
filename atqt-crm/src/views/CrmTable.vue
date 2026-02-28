@@ -415,7 +415,7 @@ async function submitCreateForm() {
       </div>
     </template>
 
-    <el-form ref="createFormRef" :model="createForm" :rules="createRules" size="small">
+    <el-form ref="createFormRef" :model="createForm" :rules="createRules" size="default">
 
       <!-- Section 1: 身份資料 -->
       <div class="mb-5">
@@ -482,11 +482,11 @@ async function submitCreateForm() {
           </div>
           <div>
             <label class="block text-xs mb-1.5 font-medium" style="color:#606266;">近期交易量(U)</label>
-            <el-input-number v-model="createForm.volume_recent" :precision="2" :step="1000" style="width:100%" />
+            <el-input-number v-model="createForm.volume_recent" :precision="2" :step="1000" size="default" style="width:100%" />
           </div>
           <div>
             <label class="block text-xs mb-1.5 font-medium" style="color:#606266;">總資產(U)</label>
-            <el-input-number v-model="createForm.total_assets" :precision="2" :step="100" style="width:100%" />
+            <el-input-number v-model="createForm.total_assets" :precision="2" :step="100" size="default" style="width:100%" />
           </div>
           <div>
             <label class="block text-xs mb-1.5 font-medium" style="color:#606266;">BingX VIP 等級</label>

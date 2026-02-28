@@ -1,7 +1,7 @@
 <script setup>
 /**
- * CustomerDetail.vue - 客戶資???
- * SDD Traceability: step5_create_mb.md § 3B. ??客戶資???
+ * CustomerDetail.vue - 客戶資料頁
+ * SDD Traceability: step5_create_mb.md § 3B. 查看客戶資料頁
  * Route: /crm/:uid
  */
 import { ref, computed, onMounted } from 'vue'
@@ -16,13 +16,13 @@ const crmStore = useCrmStore()
 const uid = computed(() => route.params.uid)
 const user = computed(() => crmStore.users.find(u => u.uid === uid.value) ?? null)
 
-// ?? 編輯模? ?????????????????????????????????????????????
+// 編輯模式????????????????
 const editing = ref(false)
 const editForm = ref({})
 
 function startEdit() {
   editForm.value = { ...user.value }
-  // note_tags??? ????字串（方?input 編輯?
+  // note_tags 陣列轉換為字串（方便 input 編輯）
   editForm.value._note_tags_str = Array.isArray(user.value.note_tags)
     ? user.value.note_tags.join(', ')
     : (user.value.note_tags || '')
@@ -36,7 +36,7 @@ function cancelEdit() {
 
 function saveEdit() {
   if (!editForm.value.uid) {
-    ElMessage.error('UID 不能?空')
+    ElMessage.error('UID 不能為空')
     return
   }
   const patch = { ...editForm.value }
@@ -76,7 +76,7 @@ function formatNumber(n) {
 <template>
   <div class="flex flex-col gap-5 h-full">
 
-    <!-- ?? ?部麵??+ ???? ?? -->
+    <!-- 頂部區域：導航 + 操作按鈕 -->
     <div class="flex flex-row items-center justify-between gap-4 flex-wrap shrink-0">
       <div class="flex items-center gap-2 text-sm" style="color:#909399;">
         <button class="hover:text-[#409EFF] transition-colors" @click="router.push('/crm')">客戶總表</button>
@@ -97,7 +97,7 @@ function formatNumber(n) {
             style="background:#fff;border:1px solid #dcdfe6;color:#303133;"
             @click="startEdit"
           >
-            編輯資?
+            編輯資料
           </button>
           <template v-else>
             <button
@@ -117,17 +117,17 @@ function formatNumber(n) {
       </div>
     </div>
 
-    <!-- ???用??-->
+    <!-- 找不到用戶 -->
     <div v-if="!user" class="bg-white rounded-lg p-12 text-center" style="border:1px solid #e4e7ed;box-shadow:0 0 12px rgba(0,0,0,0.05);">
       <span class="material-symbols-outlined text-6xl mb-4 block" style="color:#dcdfe6;">person_search</span>
       <p class="text-base mb-4" style="color:#909399;">找不到 UID：{{ uid }} 的客戶資料</p>
       <button class="px-4 py-2 rounded-md text-sm text-white" style="background:#409EFF;" @click="router.push('/crm')">回到總表</button>
     </div>
 
-    <!-- ?? 主??? ?? -->
+    <!-- 主要內容區 -->
     <div v-else class="flex flex-col lg:flex-row gap-6 flex-1 overflow-hidden">
 
-      <!-- ?? 左?：主要???? -->
+      <!-- 左側：主要資料 -->
       <div class="flex-1 flex flex-col gap-5 overflow-y-auto pb-4">
 
         <!-- Profile Summary Card -->
@@ -161,7 +161,7 @@ function formatNumber(n) {
                 </span>
                 <span v-if="user.last_trade_date" class="flex items-center gap-1.5">
                   <span class="material-symbols-outlined text-[18px]">schedule</span>
-                  ?後交??{{ user.last_trade_date }}
+                  最後交易日：{{ user.last_trade_date }}
                 </span>
               </div>
             </div>
@@ -261,7 +261,7 @@ function formatNumber(n) {
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div><label class="block text-sm mb-1" style="color:#909399;">近期交易量(U)</label><el-input-number v-model="editForm.volume_recent" :precision="2" :step="1000" style="width:100%" size="large" /></div>
                 <div><label class="block text-sm mb-1" style="color:#909399;">總資產(U)</label><el-input-number v-model="editForm.total_assets" :precision="2" :step="100" style="width:100%" size="large" /></div>
-                <div><label class="block text-sm mb-1" style="color:#909399;">BingX VIP 等級</label><el-input v-model="editForm.bingx_vip_level" placeholder="例?0 / Lv1" size="large" /></div>
+                <div><label class="block text-sm mb-1" style="color:#909399;">BingX VIP 等級</label><el-input v-model="editForm.bingx_vip_level" placeholder="例：0 / Lv1" size="large" /></div>
                 <div><label class="block text-sm mb-1" style="color:#909399;">首次入金日</label><el-input v-model="editForm.first_deposit_time" placeholder="YYYY-MM-DD" size="large" /></div>
                 <div><label class="block text-sm mb-1" style="color:#909399;">最後交易日</label><el-input v-model="editForm.last_trade_date" placeholder="YYYY-MM-DD" size="large" /></div>
               </div>
@@ -316,7 +316,7 @@ function formatNumber(n) {
 
       </div>
 
-      <!-- ?? ??：??+ 快捷?? ?? -->
+      <!-- 右側：備註 + 快捷操作 -->
       <div class="w-full lg:w-96 flex-shrink-0 flex flex-col gap-5">
         <div class="bg-white rounded-md flex flex-col" style="border:1px solid #e4e7ed;box-shadow:0 0 12px rgba(0,0,0,0.05);min-height:420px;">
 
@@ -332,7 +332,7 @@ function formatNumber(n) {
           <div class="flex-1 p-5 flex flex-col gap-4">
             <div class="text-sm flex items-center gap-1.5" style="color:#909399;">
               <span class="material-symbols-outlined text-sm">info</span>
-              ?註欄為?部記?，?對?顯示
+              備註欄為內部記錄，不對外顯示
             </div>
             <div class="flex-1">
               <textarea
@@ -340,7 +340,7 @@ function formatNumber(n) {
                 v-model="editForm.text_notes"
                 class="w-full p-4 rounded-lg text-sm leading-relaxed resize-none outline-none transition-shadow"
                 style="min-height:200px;border:1px solid #dcdfe6;color:#303133;font-family:inherit;"
-                placeholder="記?客戶互???好???事?..."
+                placeholder="記錄客戶互動、好感度、事項..."
                 @focus="$event.target.style.borderColor='#409EFF'; $event.target.style.boxShadow='0 0 0 2px rgba(64,158,255,0.2)'"
                 @blur="$event.target.style.borderColor='#dcdfe6'; $event.target.style.boxShadow='none'"
               ></textarea>
@@ -358,7 +358,7 @@ function formatNumber(n) {
                 @click="saveEdit"
               >
                 <span class="material-symbols-outlined text-[18px]">send</span>
-                ???註
+                儲存備註
               </button>
             </div>
           </div>
@@ -380,7 +380,7 @@ function formatNumber(n) {
                 @click="!editing ? startEdit() : saveEdit()"
               >
                 <span class="material-symbols-outlined text-[18px]">{{ editing ? 'save' : 'edit' }}</span>
-                {{ editing ? '??' : '編輯' }}
+                {{ editing ? '儲存' : '編輯' }}
               </button>
             </div>
           </div>

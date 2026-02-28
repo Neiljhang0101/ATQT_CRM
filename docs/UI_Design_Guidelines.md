@@ -44,7 +44,9 @@
 | 卡片標題 / 按鈕 / 表單標籤 | `text-base` | **16px（全站基準）** |
 | 表格資料 / 標籤 / 次要文字 | `text-sm` | **14px（最小值）** |
 
-> `text-xs`（12px）**禁止使用**，所有情境請改用 `text-sm`（14px）。
+> `text-xs`（12px）**禁止使用**，所有情境請改用 `text-sm`（14px）。  
+> inline style 中 `font-size:11px`、`font-size:12px`、`font-size:13px` 同樣**禁止**，一律改為 `font-size:14px`。  
+> 小型 Pill Badge（新/舊、直/間等）同樣適用，不得以「空間不足」為由縮小字級。
 
 ### 字重
 

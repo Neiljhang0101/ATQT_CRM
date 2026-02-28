@@ -201,10 +201,10 @@ async function submitCreateForm() {
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center gap-3">
         <h2 class="text-xl font-semibold" style="color:#1a1d23;">客戶總表</h2>
-        <span class="px-2 py-0.5 rounded text-xs font-medium" style="background:#f5f7fa;border:1px solid #e4e7ed;color:#909399;">{{ crmStore.users.length }} 位客戶</span>
+        <span class="px-2 py-0.5 rounded text-sm font-medium" style="background:#f5f7fa;border:1px solid #e4e7ed;color:#909399;">{{ crmStore.users.length }} 位客戶</span>
       </div>
       <div class="flex items-center gap-2 flex-wrap">
-        <p v-if="crmStore.lastSyncTime" class="text-xs hidden sm:block" style="color:#909399;">最後同步：{{ crmStore.lastSyncTime }}</p>
+        <p v-if="crmStore.lastSyncTime" class="text-sm hidden sm:block" style="color:#909399;">最後同步：{{ crmStore.lastSyncTime }}</p>
 
         <!-- 手動建立資料 -->
         <button
@@ -251,7 +251,7 @@ async function submitCreateForm() {
     <div class="bg-white rounded-lg p-4" style="border:1px solid #e4e7ed;box-shadow:0 2px 4px rgba(0,0,0,0.05);">
       <div class="flex flex-wrap items-end gap-4">
         <div class="flex-1 min-w-[220px]">
-          <label class="block text-xs font-medium mb-1.5" style="color:#909399;">搜尋</label>
+          <label class="block text-sm font-medium mb-1.5" style="color:#909399;">搜尋</label>
           <div class="relative">
             <span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-[18px]" style="color:#909399;">search</span>
             <input v-model="searchUid" type="text" placeholder="搜尋 UID / LINE 昵稱..."
@@ -262,7 +262,7 @@ async function submitCreateForm() {
           </div>
         </div>
         <div>
-          <label class="block text-xs font-medium mb-1.5" style="color:#909399;">帳號來源</label>
+          <label class="block text-sm font-medium mb-1.5" style="color:#909399;">帳號來源</label>
           <div class="flex gap-1.5">
             <button v-for="s in [['all','全部'],['old','舊帳號'],['new','新帳號']]" :key="s[0]"
               class="px-3 py-1.5 text-sm rounded transition-colors"
@@ -271,7 +271,7 @@ async function submitCreateForm() {
           </div>
         </div>
         <div>
-          <label class="block text-xs font-medium mb-1.5" style="color:#909399;">受眾篩選</label>
+          <label class="block text-sm font-medium mb-1.5" style="color:#909399;">受眾篩選</label>
           <div class="flex gap-1.5 flex-wrap">
             <button class="px-3 py-1.5 text-sm rounded transition-colors"
               :style="filterMode === 'all' ? 'background:#409EFF;color:#fff;font-weight:500;' : 'background:#f5f7fa;color:#3d4148;border:1px solid #e4e7ed;'"
@@ -300,11 +300,11 @@ async function submitCreateForm() {
           <template #default="{ row }">
             <div class="flex items-center gap-1.5">
               <!-- ???帳??-->
-              <span class="inline-flex items-center px-1.5 py-0.5 rounded font-medium flex-shrink-0" style="font-size:11px;"
+              <span class="inline-flex items-center px-1.5 py-0.5 rounded font-medium flex-shrink-0" style="font-size:14px;"
                 :style="(row.source || row.account_type) === 'new' ? 'background:rgba(103,194,58,0.12);color:#67C23A;border:1px solid rgba(103,194,58,0.3);' : 'background:#f5f7fa;color:#909399;border:1px solid #e4e7ed;'"
               >{{ (row.source || row.account_type) === 'new' ? '新' : '舊' }}</span>
               <!-- ?????-->
-              <span class="inline-flex items-center px-1.5 py-0.5 rounded font-medium flex-shrink-0" style="font-size:11px;"
+              <span class="inline-flex items-center px-1.5 py-0.5 rounded font-medium flex-shrink-0" style="font-size:14px;"
                 :style="!row.invite_type ? 'background:#f5f7fa;color:#c0c4cc;border:1px solid #e4e7ed;' : (row.invite_type.includes('直接') ? 'background:rgba(64,158,255,0.1);color:#409EFF;border:1px solid rgba(64,158,255,0.25);' : 'background:rgba(230,162,60,0.1);color:#E6A23C;border:1px solid rgba(230,162,60,0.25);')"
 >{{ !row.invite_type ? '-' : (row.invite_type.includes('直接') ? '直' : '間') }}</span>
               <span class="font-mono" style="color:#3d4148;font-size:14px;">{{ row.uid }}</span>
@@ -320,7 +320,7 @@ async function submitCreateForm() {
         <el-table-column label="LINE 昵稱" width="160">
           <template #default="{ row }">
             <span v-if="row.line_name" style="color:#1a1d23;">{{ row.line_name }}</span>
-            <span v-else class="text-xs" style="color:#c0c4cc;">-</span>
+            <span v-else class="text-sm" style="color:#c0c4cc;">-</span>
           </template>
         </el-table-column>
 
@@ -333,21 +333,21 @@ async function submitCreateForm() {
         <el-table-column prop="volume_recent" label="近期交易量(U)" width="185" sortable>
           <template #default="{ row }">
             <span v-if="(row.volume_recent ?? row.volume_30d) !== null && (row.volume_recent ?? row.volume_30d) !== undefined" style="color:#1a1d23;">{{ Number(row.volume_recent ?? row.volume_30d).toLocaleString(undefined, { maximumFractionDigits: 2 }) }}</span>
-            <span v-else class="text-xs" style="color:#dcdfe6;">--</span>
+            <span v-else class="text-sm" style="color:#dcdfe6;">--</span>
           </template>
         </el-table-column>
 
         <el-table-column prop="balance" label="總資產(U)" width="165" sortable>
           <template #default="{ row }">
             <span v-if="row.balance !== null" :style="row.balance > 5000 ? 'color:#E6A23C;font-weight:600;' : 'color:#1a1d23;'">{{ Number(row.balance).toLocaleString() }}</span>
-            <span v-else class="text-xs" style="color:#dcdfe6;">--</span>
+            <span v-else class="text-sm" style="color:#dcdfe6;">--</span>
           </template>
         </el-table-column>
 
         <el-table-column label="RFM" width="135" class-name="hidden md:table-cell">
           <template #default="{ row }">
-            <span v-if="row.rfm_score" class="text-xs font-mono px-1.5 py-0.5 rounded" style="background:#f5f7fa;color:#3d4148;border:1px solid #e4e7ed;">R{{ row.rfm_score.r }} F{{ row.rfm_score.f }} M{{ row.rfm_score.m }}</span>
-            <span v-else class="text-xs" style="color:#dcdfe6;">--</span>
+            <span v-if="row.rfm_score" class="text-sm font-mono px-1.5 py-0.5 rounded" style="background:#f5f7fa;color:#3d4148;border:1px solid #e4e7ed;">R{{ row.rfm_score.r }} F{{ row.rfm_score.f }} M{{ row.rfm_score.m }}</span>
+            <span v-else class="text-sm" style="color:#dcdfe6;">--</span>
           </template>
         </el-table-column>
 
@@ -356,10 +356,10 @@ async function submitCreateForm() {
             <div class="flex flex-wrap gap-1">
               <template v-if="row.tags && row.tags.length">
                 <span v-for="tag in row.tags" :key="tag"
-                  class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
+                  class="inline-flex items-center px-2 py-0.5 rounded text-sm font-medium"
                   :style="`background:${tagStyle(tag).bg};color:${tagStyle(tag).color};border:1px solid ${tagStyle(tag).border};`">{{ tag }}</span>
               </template>
-              <span v-else class="text-xs" style="color:#dcdfe6;">一般用戶</span>
+              <span v-else class="text-sm" style="color:#dcdfe6;">一般用戶</span>
             </div>
           </template>
         </el-table-column>
@@ -384,7 +384,7 @@ async function submitCreateForm() {
       <div v-if="sortedFilteredData.length > 0"
         class="px-4 py-3 flex flex-wrap items-center justify-between gap-3"
         style="border-top:1px solid #e4e7ed;">
-        <span class="text-xs" style="color:#909399;">
+        <span class="text-sm" style="color:#909399;">
           顯示 {{ sortedFilteredData.length }} / 共{{ crmStore.users.length }} 人·
           VIP {{ crmStore.vipUsers.length }} · 沉睡 {{ crmStore.sleepingUsers.length }}
         </span>
@@ -425,41 +425,41 @@ async function submitCreateForm() {
         </div>
         <div class="grid grid-cols-2 gap-x-4 gap-y-3">
           <div>
-            <label class="block text-xs mb-1.5 font-medium" style="color:#606266;">BingX UID <span style="color:#F56C6C;">*</span></label>
+            <label class="block text-sm mb-1.5 font-medium" style="color:#606266;">BingX UID <span style="color:#F56C6C;">*</span></label>
             <el-form-item prop="uid" class="!mb-0">
               <el-input v-model="createForm.uid" placeholder="請輸入 UID" />
             </el-form-item>
           </div>
           <div>
-            <label class="block text-xs mb-1.5 font-medium" style="color:#606266;">帳號類型</label>
+            <label class="block text-sm mb-1.5 font-medium" style="color:#606266;">帳號類型</label>
             <el-select v-model="createForm.account_type" placeholder="選擇" clearable style="width:100%">
               <el-option label="新帳號" value="new" /><el-option label="舊帳號" value="old" />
             </el-select>
           </div>
           <div>
-            <label class="block text-xs mb-1.5 font-medium" style="color:#606266;">邀請類型</label>
+            <label class="block text-sm mb-1.5 font-medium" style="color:#606266;">邀請類型</label>
             <el-select v-model="createForm.invite_type" placeholder="選擇" clearable style="width:100%">
               <el-option label="直接邀請" value="直接邀請" /><el-option label="間接邀請" value="間接邀請" />
             </el-select>
           </div>
           <div>
-            <label class="block text-xs mb-1.5 font-medium" style="color:#606266;">邀請人 UID</label>
+            <label class="block text-sm mb-1.5 font-medium" style="color:#606266;">邀請人 UID</label>
             <el-input v-model="createForm.inviter_uid_code" placeholder="選填" />
           </div>
           <div>
-            <label class="block text-xs mb-1.5 font-medium" style="color:#606266;">邀請人 LINE 昵稱</label>
+            <label class="block text-sm mb-1.5 font-medium" style="color:#606266;">邀請人 LINE 昵稱</label>
             <el-input v-model="createForm.inviter_line_name" placeholder="選填" />
           </div>
           <div>
-            <label class="block text-xs mb-1.5 font-medium" style="color:#606266;">LINE 昵稱</label>
+            <label class="block text-sm mb-1.5 font-medium" style="color:#606266;">LINE 昵稱</label>
             <el-input v-model="createForm.line_name" placeholder="選填" />
           </div>
           <div>
-            <label class="block text-xs mb-1.5 font-medium" style="color:#606266;">官網信箱</label>
+            <label class="block text-sm mb-1.5 font-medium" style="color:#606266;">官網信箱</label>
             <el-input v-model="createForm.official_email" placeholder="選填" />
           </div>
           <div>
-            <label class="block text-xs mb-1.5 font-medium" style="color:#606266;">TradingView 帳號</label>
+            <label class="block text-sm mb-1.5 font-medium" style="color:#606266;">TradingView 帳號</label>
             <el-input v-model="createForm.tradingview_account" placeholder="選填" />
           </div>
         </div>
@@ -473,23 +473,23 @@ async function submitCreateForm() {
         </div>
         <div class="grid grid-cols-2 gap-x-4 gap-y-3">
           <div>
-            <label class="block text-xs mb-1.5 font-medium" style="color:#606266;">BingX 註冊日期</label>
+            <label class="block text-sm mb-1.5 font-medium" style="color:#606266;">BingX 註冊日期</label>
             <el-input v-model="createForm.bingx_register_date" placeholder="YYYY-MM-DD" />
           </div>
           <div>
-            <label class="block text-xs mb-1.5 font-medium" style="color:#606266;">首次入金日期</label>
+            <label class="block text-sm mb-1.5 font-medium" style="color:#606266;">首次入金日期</label>
             <el-input v-model="createForm.first_deposit_time" placeholder="YYYY-MM-DD" />
           </div>
           <div>
-            <label class="block text-xs mb-1.5 font-medium" style="color:#606266;">近期交易量(U)</label>
+            <label class="block text-sm mb-1.5 font-medium" style="color:#606266;">近期交易量(U)</label>
             <el-input-number v-model="createForm.volume_recent" :precision="2" :step="1000" size="large" style="width:100%" />
           </div>
           <div>
-            <label class="block text-xs mb-1.5 font-medium" style="color:#606266;">總資產(U)</label>
+            <label class="block text-sm mb-1.5 font-medium" style="color:#606266;">總資產(U)</label>
             <el-input-number v-model="createForm.total_assets" :precision="2" :step="100" size="large" style="width:100%" />
           </div>
           <div>
-            <label class="block text-xs mb-1.5 font-medium" style="color:#606266;">BingX VIP 等級</label>
+            <label class="block text-sm mb-1.5 font-medium" style="color:#606266;">BingX VIP 等級</label>
             <el-input v-model="createForm.bingx_vip_level" placeholder="例：0 / Lv1" />
           </div>
         </div>
@@ -503,19 +503,19 @@ async function submitCreateForm() {
         </div>
         <div class="grid grid-cols-2 gap-x-4 gap-y-3">
           <div>
-            <label class="block text-xs mb-1.5 font-medium" style="color:#606266;">指標版本</label>
+            <label class="block text-sm mb-1.5 font-medium" style="color:#606266;">指標版本</label>
             <el-input v-model="createForm.indicator_version" placeholder="選填" />
           </div>
           <div>
-            <label class="block text-xs mb-1.5 font-medium" style="color:#606266;">社群互動</label>
+            <label class="block text-sm mb-1.5 font-medium" style="color:#606266;">社群互動</label>
             <el-input v-model="createForm.community_interaction" placeholder="選填" />
           </div>
           <div class="col-span-2">
-            <label class="block text-xs mb-1.5 font-medium" style="color:#606266;">備註標籤（逗號分隔）</label>
+            <label class="block text-sm mb-1.5 font-medium" style="color:#606266;">備註標籤（逗號分隔）</label>
             <el-input v-model="createForm.note_tags" placeholder="例如：高活躍、VIP、潛力客戶" />
           </div>
           <div class="col-span-2">
-            <label class="block text-xs mb-1.5 font-medium" style="color:#606266;">文字備註</label>
+            <label class="block text-sm mb-1.5 font-medium" style="color:#606266;">文字備註</label>
             <el-input v-model="createForm.text_notes" type="textarea" :rows="3" placeholder="記錄客戶互動、好感度、事項…..." />
           </div>
         </div>
@@ -525,7 +525,7 @@ async function submitCreateForm() {
 
     <template #footer>
       <div class="flex items-center justify-between">
-        <p class="text-xs" style="color:#909399;">* 選填欄位可以之後再補填</p>
+        <p class="text-sm" style="color:#909399;">* 選填欄位可以之後再補填</p>
         <div class="flex gap-2">
           <button
             class="h-9 px-4 rounded-md text-sm font-medium transition-colors"

@@ -141,11 +141,11 @@ function formatNumber(n) {
             <div class="flex-1 flex flex-col gap-2">
               <div class="flex items-center gap-3 flex-wrap">
                 <h1 class="text-xl font-bold" style="color:#1a1d23;">UID: {{ user.uid }}</h1>
-                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold uppercase tracking-wide"
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-sm font-bold uppercase tracking-wide"
                   :style="(user.account_type === 'new') ? 'background:rgba(103,194,58,0.1);color:#67C23A;border:1px solid rgba(103,194,58,0.2);' : 'background:#f5f7fa;color:#909399;border:1px solid #e4e7ed;'">
                   {{ accountTypeLabel(user.account_type) }}
                 </span>
-                <span v-if="user.invite_type" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+                <span v-if="user.invite_type" class="inline-flex items-center px-2 py-0.5 rounded-full text-sm font-medium"
                   style="background:#f0f9eb;color:#67C23A;border:1px solid rgba(103,194,58,0.2);">
                   {{ user.invite_type }}
                 </span>
@@ -177,45 +177,45 @@ function formatNumber(n) {
           <div class="p-5">
             <template v-if="!editing">
               <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-y-5 gap-x-8">
-                <div><div class="text-xs mb-1" style="color:#909399;">UID</div><div class="font-mono font-medium" style="color:#409EFF;">{{ user.uid }}</div></div>
-                <div><div class="text-xs mb-1" style="color:#909399;">帳號類型</div>
-                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
+                <div><div class="text-sm mb-1" style="color:#909399;">UID</div><div class="font-mono font-medium" style="color:#409EFF;">{{ user.uid }}</div></div>
+                <div><div class="text-sm mb-1" style="color:#909399;">帳號類型</div>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-sm font-medium"
                     :style="user.account_type === 'new' ? 'background:#ecf5ff;color:#409EFF;border:1px solid rgba(64,158,255,0.2);' : 'background:#f5f7fa;color:#909399;border:1px solid #e4e7ed;'">
                     {{ accountTypeLabel(user.account_type) }}
                   </span>
                 </div>
-                <div><div class="text-xs mb-1" style="color:#909399;">邀請類型</div><div class="font-medium" style="color:#303133;">{{ user.invite_type || '--' }}</div></div>
-                <div><div class="text-xs mb-1" style="color:#909399;">邀請人 UID</div><div class="font-mono font-medium cursor-pointer transition-colors hover:text-[#409EFF]" style="color:#303133;">{{ user.inviter_uid_code || '--' }}</div></div>
-                <div><div class="text-xs mb-1" style="color:#909399;">已綁定邀請碼</div><div class="font-mono font-medium" style="color:#303133;">{{ user.bound_invite_code || '--' }}</div></div>
-                <div><div class="text-xs mb-1" style="color:#909399;">他的推廣邀請碼</div><div class="font-mono font-medium" style="color:#303133;">{{ user.own_promo_code || '--' }}</div></div>
-                <div><div class="text-xs mb-1" style="color:#909399;">邀請人 LINE 暱稱</div><div class="font-medium" style="color:#303133;">{{ user.inviter_line_name || '--' }}</div></div>
-                <div><div class="text-xs mb-1" style="color:#909399;">LINE 暱稱</div><div class="font-medium" style="color:#303133;">{{ user.line_name || '--' }}</div></div>
-                <div><div class="text-xs mb-1" style="color:#909399;">官網信箱</div><div class="font-medium" style="color:#303133;word-break:break-all;">{{ user.official_email || '--' }}</div></div>
-                <div><div class="text-xs mb-1" style="color:#909399;">TradingView 帳號</div><div class="font-medium" style="color:#303133;">{{ user.tradingview_account || '--' }}</div></div>
-                <div><div class="text-xs mb-1" style="color:#909399;">BingX 註冊日期</div><div class="font-medium" style="color:#303133;">{{ user.bingx_register_date || user.register_date || '--' }}</div></div>
+                <div><div class="text-sm mb-1" style="color:#909399;">邀請類型</div><div class="font-medium" style="color:#303133;">{{ user.invite_type || '--' }}</div></div>
+                <div><div class="text-sm mb-1" style="color:#909399;">邀請人 UID</div><div class="font-mono font-medium cursor-pointer transition-colors hover:text-[#409EFF]" style="color:#303133;">{{ user.inviter_uid_code || '--' }}</div></div>
+                <div><div class="text-sm mb-1" style="color:#909399;">已綁定邀請碼</div><div class="font-mono font-medium" style="color:#303133;">{{ user.bound_invite_code || '--' }}</div></div>
+                <div><div class="text-sm mb-1" style="color:#909399;">他的推廣邀請碼</div><div class="font-mono font-medium" style="color:#303133;">{{ user.own_promo_code || '--' }}</div></div>
+                <div><div class="text-sm mb-1" style="color:#909399;">邀請人 LINE 暱稱</div><div class="font-medium" style="color:#303133;">{{ user.inviter_line_name || '--' }}</div></div>
+                <div><div class="text-sm mb-1" style="color:#909399;">LINE 暱稱</div><div class="font-medium" style="color:#303133;">{{ user.line_name || '--' }}</div></div>
+                <div><div class="text-sm mb-1" style="color:#909399;">官網信箱</div><div class="font-medium" style="color:#303133;word-break:break-all;">{{ user.official_email || '--' }}</div></div>
+                <div><div class="text-sm mb-1" style="color:#909399;">TradingView 帳號</div><div class="font-medium" style="color:#303133;">{{ user.tradingview_account || '--' }}</div></div>
+                <div><div class="text-sm mb-1" style="color:#909399;">BingX 註冊日期</div><div class="font-medium" style="color:#303133;">{{ user.bingx_register_date || user.register_date || '--' }}</div></div>
               </div>
             </template>
             <template v-else>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div><label class="block text-xs mb-1" style="color:#909399;">BingX UID</label><input :value="editForm.uid" disabled class="w-full px-3 py-2 rounded text-sm" style="background:#f5f7fa;border:1px solid #e4e7ed;color:#909399;height:40px;" /></div>
-                <div><label class="block text-xs mb-1" style="color:#909399;">帳號類型</label>
+                <div><label class="block text-sm mb-1" style="color:#909399;">BingX UID</label><input :value="editForm.uid" disabled class="w-full px-3 py-2 rounded text-sm" style="background:#f5f7fa;border:1px solid #e4e7ed;color:#909399;height:40px;" /></div>
+                <div><label class="block text-sm mb-1" style="color:#909399;">帳號類型</label>
                   <el-select v-model="editForm.account_type" clearable style="width:100%" size="large">
                     <el-option label="新帳號" value="new" /><el-option label="舊帳號" value="old" />
                   </el-select>
                 </div>
-                <div><label class="block text-xs mb-1" style="color:#909399;">邀請類型</label>
+                <div><label class="block text-sm mb-1" style="color:#909399;">邀請類型</label>
                   <el-select v-model="editForm.invite_type" clearable style="width:100%" size="large">
                     <el-option label="直接邀請" value="直接邀請" /><el-option label="間接邀請" value="間接邀請" />
                   </el-select>
                 </div>
-                <div><label class="block text-xs mb-1" style="color:#909399;">邀請人 UID</label><el-input v-model="editForm.inviter_uid_code" size="large" /></div>
-                <div><label class="block text-xs mb-1" style="color:#909399;">已綁定邀請碼</label><el-input v-model="editForm.bound_invite_code" size="large" /></div>
-                <div><label class="block text-xs mb-1" style="color:#909399;">他的推廣邀請碼</label><el-input v-model="editForm.own_promo_code" size="large" /></div>
-                <div><label class="block text-xs mb-1" style="color:#909399;">邀請人 LINE 暱稱</label><el-input v-model="editForm.inviter_line_name" size="large" /></div>
-                <div><label class="block text-xs mb-1" style="color:#909399;">LINE 暱稱</label><el-input v-model="editForm.line_name" size="large" /></div>
-                <div><label class="block text-xs mb-1" style="color:#909399;">官網信箱</label><el-input v-model="editForm.official_email" size="large" /></div>
-                <div><label class="block text-xs mb-1" style="color:#909399;">TradingView 帳號</label><el-input v-model="editForm.tradingview_account" size="large" /></div>
-                <div><label class="block text-xs mb-1" style="color:#909399;">BingX 註冊日期</label><el-input v-model="editForm.bingx_register_date" placeholder="YYYY-MM-DD HH:mm:ss" size="large" /></div>
+                <div><label class="block text-sm mb-1" style="color:#909399;">邀請人 UID</label><el-input v-model="editForm.inviter_uid_code" size="large" /></div>
+                <div><label class="block text-sm mb-1" style="color:#909399;">已綁定邀請碼</label><el-input v-model="editForm.bound_invite_code" size="large" /></div>
+                <div><label class="block text-sm mb-1" style="color:#909399;">他的推廣邀請碼</label><el-input v-model="editForm.own_promo_code" size="large" /></div>
+                <div><label class="block text-sm mb-1" style="color:#909399;">邀請人 LINE 暱稱</label><el-input v-model="editForm.inviter_line_name" size="large" /></div>
+                <div><label class="block text-sm mb-1" style="color:#909399;">LINE 暱稱</label><el-input v-model="editForm.line_name" size="large" /></div>
+                <div><label class="block text-sm mb-1" style="color:#909399;">官網信箱</label><el-input v-model="editForm.official_email" size="large" /></div>
+                <div><label class="block text-sm mb-1" style="color:#909399;">TradingView 帳號</label><el-input v-model="editForm.tradingview_account" size="large" /></div>
+                <div><label class="block text-sm mb-1" style="color:#909399;">BingX 註冊日期</label><el-input v-model="editForm.bingx_register_date" placeholder="YYYY-MM-DD HH:mm:ss" size="large" /></div>
               </div>
             </template>
           </div>
@@ -231,39 +231,39 @@ function formatNumber(n) {
             <template v-if="!editing">
               <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-y-5 gap-x-8">
                 <div>
-                  <div class="text-xs mb-1" style="color:#909399;">近期交易量(U)</div>
+                  <div class="text-sm mb-1" style="color:#909399;">近期交易量(U)</div>
                   <div class="text-lg font-semibold" style="color:#1a1d23;">{{ formatNumber(user.volume_recent ?? user.volume_30d) }}</div>
                 </div>
                 <div>
-                  <div class="text-xs mb-1" style="color:#909399;">總資產(U)</div>
+                  <div class="text-sm mb-1" style="color:#909399;">總資產(U)</div>
                   <div class="text-lg font-bold" :style="(user.total_assets ?? user.balance) > 5000 ? 'color:#E6A23C;' : 'color:#1a1d23;'">
                     {{ formatNumber(user.total_assets ?? user.balance) }}
                   </div>
                 </div>
                 <div>
-                  <div class="text-xs mb-1" style="color:#909399;">BingX VIP 等級</div>
+                  <div class="text-sm mb-1" style="color:#909399;">BingX VIP 等級</div>
                   <div class="flex items-center gap-1.5 w-fit px-2 py-1 rounded" style="background:rgba(230,162,60,0.08);border:1px solid rgba(230,162,60,0.2);">
                     <span class="material-symbols-outlined text-[18px]" style="color:#E6A23C;">workspace_premium</span>
                     <span class="font-bold text-sm" style="color:#E6A23C;">{{ user.bingx_vip_level ?? '--' }}</span>
                   </div>
                 </div>
                 <div>
-                  <div class="text-xs mb-1" style="color:#909399;">首次入金日</div>
+                  <div class="text-sm mb-1" style="color:#909399;">首次入金日</div>
                   <div class="font-medium" style="color:#303133;">{{ user.first_deposit_time || '--' }}</div>
                 </div>
                 <div>
-                  <div class="text-xs mb-1" style="color:#909399;">最後交易日</div>
+                  <div class="text-sm mb-1" style="color:#909399;">最後交易日</div>
                   <div class="font-medium" style="color:#303133;">{{ user.last_trade_date || '--' }}</div>
                 </div>
               </div>
             </template>
             <template v-else>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div><label class="block text-xs mb-1" style="color:#909399;">近期交易量(U)</label><el-input-number v-model="editForm.volume_recent" :precision="2" :step="1000" style="width:100%" size="large" /></div>
-                <div><label class="block text-xs mb-1" style="color:#909399;">總資產(U)</label><el-input-number v-model="editForm.total_assets" :precision="2" :step="100" style="width:100%" size="large" /></div>
-                <div><label class="block text-xs mb-1" style="color:#909399;">BingX VIP 等級</label><el-input v-model="editForm.bingx_vip_level" placeholder="例?0 / Lv1" size="large" /></div>
-                <div><label class="block text-xs mb-1" style="color:#909399;">首次入金日</label><el-input v-model="editForm.first_deposit_time" placeholder="YYYY-MM-DD" size="large" /></div>
-                <div><label class="block text-xs mb-1" style="color:#909399;">最後交易日</label><el-input v-model="editForm.last_trade_date" placeholder="YYYY-MM-DD" size="large" /></div>
+                <div><label class="block text-sm mb-1" style="color:#909399;">近期交易量(U)</label><el-input-number v-model="editForm.volume_recent" :precision="2" :step="1000" style="width:100%" size="large" /></div>
+                <div><label class="block text-sm mb-1" style="color:#909399;">總資產(U)</label><el-input-number v-model="editForm.total_assets" :precision="2" :step="100" style="width:100%" size="large" /></div>
+                <div><label class="block text-sm mb-1" style="color:#909399;">BingX VIP 等級</label><el-input v-model="editForm.bingx_vip_level" placeholder="例?0 / Lv1" size="large" /></div>
+                <div><label class="block text-sm mb-1" style="color:#909399;">首次入金日</label><el-input v-model="editForm.first_deposit_time" placeholder="YYYY-MM-DD" size="large" /></div>
+                <div><label class="block text-sm mb-1" style="color:#909399;">最後交易日</label><el-input v-model="editForm.last_trade_date" placeholder="YYYY-MM-DD" size="large" /></div>
               </div>
             </template>
           </div>
@@ -279,36 +279,36 @@ function formatNumber(n) {
             <template v-if="!editing">
               <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-y-5 gap-x-8">
                 <div>
-                  <div class="text-xs mb-2" style="color:#909399;">RFM 分數</div>
+                  <div class="text-sm mb-2" style="color:#909399;">RFM 分數</div>
                   <div v-if="user.rfm_score" class="flex items-center gap-2">
-                    <span class="px-2 py-0.5 rounded text-xs font-bold" style="background:rgba(103,194,58,0.1);color:#67C23A;border:1px solid rgba(103,194,58,0.2);">R: {{ user.rfm_score.r }}</span>
-                    <span class="px-2 py-0.5 rounded text-xs font-bold" style="background:#ecf5ff;color:#409EFF;border:1px solid rgba(64,158,255,0.2);">F: {{ user.rfm_score.f }}</span>
-                    <span class="px-2 py-0.5 rounded text-xs font-bold" style="background:rgba(144,97,219,0.1);color:#9061db;border:1px solid rgba(144,97,219,0.2);">M: {{ user.rfm_score.m }}</span>
+                    <span class="px-2 py-0.5 rounded text-sm font-bold" style="background:rgba(103,194,58,0.1);color:#67C23A;border:1px solid rgba(103,194,58,0.2);">R: {{ user.rfm_score.r }}</span>
+                    <span class="px-2 py-0.5 rounded text-sm font-bold" style="background:#ecf5ff;color:#409EFF;border:1px solid rgba(64,158,255,0.2);">F: {{ user.rfm_score.f }}</span>
+                    <span class="px-2 py-0.5 rounded text-sm font-bold" style="background:rgba(144,97,219,0.1);color:#9061db;border:1px solid rgba(144,97,219,0.2);">M: {{ user.rfm_score.m }}</span>
                   </div>
                   <div v-else class="text-sm" style="color:#dcdfe6;">--</div>
                 </div>
-                <div><div class="text-xs mb-1" style="color:#909399;">指標版本</div><div class="font-medium" style="color:#303133;">{{ user.indicator_version || '--' }}</div></div>
-                <div><div class="text-xs mb-1" style="color:#909399;">社群互動</div><div class="font-medium" style="color:#303133;">{{ user.community_interaction || '--' }}</div></div>
-                <div><div class="text-xs mb-1" style="color:#909399;">RFM 受眾標籤</div><div class="font-medium" style="color:#303133;">{{ user.rfm_score_tag || '--' }}</div></div>
+                <div><div class="text-sm mb-1" style="color:#909399;">指標版本</div><div class="font-medium" style="color:#303133;">{{ user.indicator_version || '--' }}</div></div>
+                <div><div class="text-sm mb-1" style="color:#909399;">社群互動</div><div class="font-medium" style="color:#303133;">{{ user.community_interaction || '--' }}</div></div>
+                <div><div class="text-sm mb-1" style="color:#909399;">RFM 受眾標籤</div><div class="font-medium" style="color:#303133;">{{ user.rfm_score_tag || '--' }}</div></div>
                 <div class="md:col-span-2 lg:col-span-3">
-                  <div class="text-xs mb-2" style="color:#909399;">備註標籤</div>
+                  <div class="text-sm mb-2" style="color:#909399;">備註標籤</div>
                   <div class="flex flex-wrap gap-2">
                     <template v-if="user.note_tags && user.note_tags.length">
                       <span v-for="t in user.note_tags" :key="t"
-                        class="inline-flex px-3 py-1 rounded-full text-xs font-medium"
+                        class="inline-flex px-3 py-1 rounded-full text-sm font-medium"
                         style="background:#f5f7fa;color:#606266;border:1px solid #e4e7ed;">{{ t }}</span>
                     </template>
-                    <span v-else class="text-xs" style="color:#dcdfe6;">--</span>
+                    <span v-else class="text-sm" style="color:#dcdfe6;">--</span>
                   </div>
                 </div>
               </div>
             </template>
             <template v-else>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div><label class="block text-xs mb-1" style="color:#909399;">RFM 受眾標籤</label><el-input v-model="editForm.rfm_score_tag" size="large" /></div>
-                <div><label class="block text-xs mb-1" style="color:#909399;">指標版本</label><el-input v-model="editForm.indicator_version" size="large" /></div>
-                <div><label class="block text-xs mb-1" style="color:#909399;">社群互動</label><el-input v-model="editForm.community_interaction" size="large" /></div>
-                <div><label class="block text-xs mb-1" style="color:#909399;">備註標籤（逗號分隔）</label><el-input v-model="editForm._note_tags_str" placeholder="例：高活躍、活躍" size="large" /></div>
+                <div><label class="block text-sm mb-1" style="color:#909399;">RFM 受眾標籤</label><el-input v-model="editForm.rfm_score_tag" size="large" /></div>
+                <div><label class="block text-sm mb-1" style="color:#909399;">指標版本</label><el-input v-model="editForm.indicator_version" size="large" /></div>
+                <div><label class="block text-sm mb-1" style="color:#909399;">社群互動</label><el-input v-model="editForm.community_interaction" size="large" /></div>
+                <div><label class="block text-sm mb-1" style="color:#909399;">備註標籤（逗號分隔）</label><el-input v-model="editForm._note_tags_str" placeholder="例：高活躍、活躍" size="large" /></div>
               </div>
             </template>
           </div>
@@ -330,7 +330,7 @@ function formatNumber(n) {
 
           <!-- Notes Body -->
           <div class="flex-1 p-5 flex flex-col gap-4">
-            <div class="text-xs flex items-center gap-1.5" style="color:#909399;">
+            <div class="text-sm flex items-center gap-1.5" style="color:#909399;">
               <span class="material-symbols-outlined text-sm">info</span>
               ?註欄為?部記?，?對?顯示
             </div>
@@ -365,7 +365,7 @@ function formatNumber(n) {
 
           <!-- Quick Actions -->
           <div class="p-5" style="border-top:1px solid #e4e7ed;background:#f5f7fa;border-radius:0 0 4px 4px;">
-            <h4 class="text-xs font-bold uppercase tracking-wider mb-3" style="color:#909399;">Quick Actions</h4>
+            <h4 class="text-sm font-bold uppercase tracking-wider mb-3" style="color:#909399;">Quick Actions</h4>
             <div class="grid grid-cols-2 gap-3">
               <button
                 class="flex items-center justify-center gap-2 py-2.5 rounded-md text-sm transition-colors"

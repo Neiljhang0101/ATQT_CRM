@@ -5,6 +5,7 @@ import { ElMessage, ElNotification } from 'element-plus'
 import { oldApi, newApi } from '../api/bingx.js'
 import { useCrmStore } from '../store/index.js'
 import { parseXlsxFile } from '../utils/xlsxImport.js'
+import { parseLineChatXlsx } from '../utils/lineImport.js'
 
 const crmStore = useCrmStore()
 const router = useRouter()
@@ -140,7 +141,12 @@ async function handleXlsxUpload(uploadFile) {
       return
     }
     const { importedCount, updatedCount } = crmStore.importXlsxRecords(records)
-  const typeLabel = fileType === 'user-info' ? '用戶資料' : '交易量'
+    const typeLabel = fileType === 'user-info' ? '用戶資料'
+      : fileType === 'volume' ? '交易量'
+      : fileType === 'account-tv' ? '官網信箱/TVID'
+      : fileType === 'line-names' ? 'LINE名稱'
+      : fileType === 'mixed' ? '官網帳號+LINE名稱'
+      : '未知類型'
     const accLabel = accountType === 'old' ? '舊帳號' : accountType === 'new' ? '新帳號' : '未知帳號'
     ElMessage.success(`${file.name}（${typeLabel} - ${accLabel}）匯入完成：新增 ${importedCount} 筆 / 更新 ${updatedCount} 筆`)
   } catch (err) {
@@ -150,7 +156,34 @@ async function handleXlsxUpload(uploadFile) {
   }
 }
 
-// ?? ??建?資? ??????????????????????????????????????????
+// LINE 對話匯入 ──────────────────────────────────────────────────
+const lineImporting = ref(false)
+
+async function handleLineChatUpload(uploadFile) {
+  const file = uploadFile.raw ?? uploadFile
+  if (!file) return
+  lineImporting.value = true
+  try {
+    const { weeklyStats, nickMap, summary } = await parseLineChatXlsx(file)
+    if (summary.totalMessages === 0) {
+      ElMessage.warning('未找到有效訊息，請確認是 LINE對話匯出 xlsx 格式')
+      return
+    }
+    const { updatedCount, newCount, nickUpdated } = crmStore.importLineChatRecords(weeklyStats, nickMap)
+    ElMessage.success(
+      `${file.name} 匯入完成：` +
+      `有效訊息 ${summary.totalMessages.toLocaleString()} 則 / ` +
+      `涵蓋 ${summary.weeks.length} 週 / ` +
+      `更新 ${updatedCount} 人 / 新建 ${newCount} 人 / 暱稱更新 ${nickUpdated} 人`
+    )
+  } catch (err) {
+    ElNotification({ title: 'LINE 對話匯入失敗', type: 'error', message: err.message, duration: 0 })
+  } finally {
+    lineImporting.value = false
+  }
+}
+
+// 手動建立資料 ──────────────────────────────────────────────────
 const showCreateDialog = ref(false)
 const createForm = ref({
   uid: '', account_type: null, invite_type: null, inviter_uid_code: '',
@@ -236,7 +269,27 @@ async function submitCreateForm() {
           </template>
         </el-upload>
 
-        <!-- ?步 API -->
+        <!-- LINE 對話匯入 -->
+        <el-upload
+          :auto-upload="false"
+          :show-file-list="false"
+          accept=".xlsx"
+          :on-change="handleLineChatUpload"
+        >
+          <template #trigger>
+            <button
+              class="flex items-center gap-1.5 px-4 py-2 rounded text-sm font-medium transition-colors shadow-sm"
+              :style="lineImporting ? 'background:#e8f4fd;color:#aaa;cursor:not-allowed;' : 'background:#e8f4fd;color:#409EFF;border:1px solid rgba(64,158,255,0.3);'"
+              :disabled="lineImporting"
+              type="button"
+            >
+              <span class="material-symbols-outlined text-[18px]">chat</span>
+              {{ lineImporting ? '匯入中...' : '匯入 LINE 對話' }}
+            </button>
+          </template>
+        </el-upload>
+
+        <!-- 同步 API -->
         <button
           class="flex items-center gap-1.5 px-4 py-2 rounded text-sm font-medium text-white transition-colors shadow-sm"
           :disabled="crmStore.loading"

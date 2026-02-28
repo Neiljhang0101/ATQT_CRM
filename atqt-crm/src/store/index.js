@@ -16,6 +16,7 @@ export function createDefaultUser(overrides = {}) {
     own_promo_code: null,      // 4c. 他的推廣邀請碼
     inviter_line_name: null,   // 5. 邀請人 LINE 暱稱
     line_name: null,           // 6. LINE 暱稱
+    line_display_name: null,   // 6b. LINE 名字（官方帳號顯示名稱）
     register_date: null,       // 7. 註冊日期
     volume_recent: null,       // 8. 近期交易量 (Number)
     total_assets: null,        // 9. 總資產 (Number)
@@ -41,6 +42,7 @@ export function createDefaultUser(overrides = {}) {
     has_deposit: false,
     kyc: false,
     line_msg_count_7d: 0,
+    line_weekly_msgs: {},      // { "2026-W04": 5, "2026-W05": 3, ... } 每週訊息數（LINE對話匯入）
     rfm_score: null,
     tags: [],
     ...overrides,
@@ -317,6 +319,68 @@ export const useCrmStore = defineStore('crm', () => {
   }
 
   /**
+   * 匯入 LINE 對話紀錄（每週訊息數統計 + 暱稱更新）
+   * @param {Object} weeklyStats  uid → { weekKey: count }
+   * @param {Object} nickMap      uid → latestNickname（LINE 對話內最後出現的暱稱）
+   * @returns {{ updatedCount: number, newCount: number, nickUpdated: number }}
+   */
+  function importLineChatRecords(weeklyStats, nickMap) {
+    let updatedCount = 0
+    let newCount = 0
+    let nickUpdated = 0
+
+    for (const [uid, weekData] of Object.entries(weeklyStats)) {
+      const idx = users.value.findIndex(u => u.uid === uid)
+
+      // 最近一週訊息數（用於 RFM F 分）
+      const weeks = Object.keys(weekData).sort()
+      const latestWeek = weeks[weeks.length - 1]
+      const latestCount = weekData[latestWeek] || 0
+
+      // LINE 對話的暱稱為最新，以它為準
+      const newNick = nickMap[uid] || null
+
+      if (idx > -1) {
+        const cur = users.value[idx]
+        // 累加每週統計（同一週的計數累加而非覆蓋，支援重複匯入同月份）
+        const merged = { ...(cur.line_weekly_msgs || {}) }
+        for (const [wk, cnt] of Object.entries(weekData)) {
+          merged[wk] = (merged[wk] || 0) + cnt
+        }
+        const patch = {
+          line_weekly_msgs: merged,
+          line_msg_count_7d: merged[latestWeek] || latestCount,
+        }
+        if (newNick && cur.line_name !== newNick) {
+          patch.line_name = newNick
+          nickUpdated++
+        }
+        users.value[idx] = { ...cur, ...patch }
+        updatedCount++
+      } else {
+        // UID 不在名單，新建（僅有 LINE 資料）
+        users.value.push(createDefaultUser({
+          uid,
+          line_name: newNick,
+          line_weekly_msgs: { ...weekData },
+          line_msg_count_7d: latestCount,
+        }))
+        newCount++
+      }
+    }
+
+    // 重算 RFM
+    users.value = users.value.map(u => {
+      const r = calcRScore(u.last_trade_date)
+      const f = calcFScore(u.line_msg_count_7d, u.trade_count_30d)
+      const m = calcMScore(u.balance, u.volume_recent ?? u.volume_30d)
+      return { ...u, rfm_score: { r, f, m } }
+    })
+    lastSyncTime.value = new Date().toLocaleString('zh-TW')
+    return { updatedCount, newCount, nickUpdated }
+  }
+
+  /**
    * 手動新增單一客戶
    * SDD Traceability: step5_create_mb.md § 3A. 手動建檔
    * @param {Object} userData
@@ -351,6 +415,7 @@ export const useCrmStore = defineStore('crm', () => {
     sleepingUsers,
     mergeUsers,
     importXlsxRecords,
+    importLineChatRecords,
     addUser,
     updateUser,
     setLoading,

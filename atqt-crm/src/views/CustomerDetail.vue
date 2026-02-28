@@ -71,6 +71,54 @@ function formatNumber(n) {
   if (n === null || n === undefined) return '--'
   return Number(n).toLocaleString(undefined, { maximumFractionDigits: 2 })
 }
+
+// 社群互動統計 computed ─────────────────────────────────
+// weekKey 格式："YYYY-MM-DD"（該週週日）
+function weekKeyToRange(sundayKey) {
+  if (!sundayKey) return null
+  let sun
+  // 支援舊格式 "YYYY-Www"（向後相容）
+  const isoWeekMatch = sundayKey.match(/^(\d{4})-W(\d{2})$/)
+  if (isoWeekMatch) {
+    // ISO 週一 → 找到週日
+    const year = Number(isoWeekMatch[1])
+    const week = Number(isoWeekMatch[2])
+    const jan4 = new Date(Date.UTC(year, 0, 4))
+    const monday = new Date(jan4.getTime() - ((jan4.getUTCDay() || 7) - 1) * 86400000 + (week - 1) * 7 * 86400000)
+    // ISO 週一往回 1 天 = 週日
+    sun = new Date(monday.getTime() - 86400000)
+  } else {
+    // 新格式 "YYYY-MM-DD"（週日）
+    sun = new Date(sundayKey + 'T00:00:00Z')
+  }
+  if (isNaN(sun.getTime())) return null
+  const sat = new Date(sun.getTime() + 6 * 86400000)
+  const fmt = d => `${d.getUTCMonth() + 1}/${d.getUTCDate()}`
+  return `${fmt(sun)}~${fmt(sat)}`
+}
+
+const lineStats = computed(() => {
+  const msgs = user.value?.line_weekly_msgs
+  if (!msgs || Object.keys(msgs).length === 0) return null
+  const weeks = Object.keys(msgs).sort()
+  const latestWeek  = weeks[weeks.length - 1]
+  const prevWeek    = weeks.length >= 2 ? weeks[weeks.length - 2] : null
+  const latestCount = msgs[latestWeek] || 0
+  const prevCount   = prevWeek != null ? (msgs[prevWeek] || 0) : null
+  const total       = Object.values(msgs).reduce((a, b) => a + b, 0)
+  const dateRange   = weekKeyToRange(latestWeek) ?? '--'
+  let changePct = null
+  let changeDir = null
+  if (prevCount !== null) {
+    if (prevCount > 0) {
+      changePct = Math.round((latestCount - prevCount) / prevCount * 100)
+      changeDir = changePct >= 0 ? 'up' : 'down'
+    } else if (latestCount > 0) {
+      changeDir = 'up'
+    }
+  }
+  return { latestWeek, dateRange, latestCount, prevCount, prevWeek, changePct, changeDir, total }
+})
 </script>
 
 <template>
@@ -190,6 +238,7 @@ function formatNumber(n) {
                 <div><div class="text-sm mb-1" style="color:#606266;">他的推廣邀請碼</div><div class="font-mono font-medium" style="color:#303133;">{{ user.own_promo_code || '--' }}</div></div>
                 <div><div class="text-sm mb-1" style="color:#606266;">邀請人 LINE 暱稱</div><div class="font-medium" style="color:#303133;">{{ user.inviter_line_name || '--' }}</div></div>
                 <div><div class="text-sm mb-1" style="color:#606266;">LINE 暱稱</div><div class="font-medium" style="color:#303133;">{{ user.line_name || '--' }}</div></div>
+                <div><div class="text-sm mb-1" style="color:#606266;">LINE 名稱（官方交談顯示）</div><div class="font-medium" style="color:#303133;">{{ user.line_display_name || '--' }}</div></div>
                 <div><div class="text-sm mb-1" style="color:#606266;">官網信箱</div><div class="font-medium" style="color:#303133;word-break:break-all;">{{ user.official_email || '--' }}</div></div>
                 <div><div class="text-sm mb-1" style="color:#606266;">TradingView 帳號</div><div class="font-medium" style="color:#303133;">{{ user.tradingview_account || '--' }}</div></div>
                 <div><div class="text-sm mb-1" style="color:#606266;">BingX 註冊日期</div><div class="font-medium" style="color:#303133;">{{ user.bingx_register_date || user.register_date || '--' }}</div></div>
@@ -213,6 +262,7 @@ function formatNumber(n) {
                 <div><label class="block text-sm mb-1" style="color:#606266;">他的推廣邀請碼</label><el-input v-model="editForm.own_promo_code" size="large" /></div>
                 <div><label class="block text-sm mb-1" style="color:#606266;">邀請人 LINE 暱稱</label><el-input v-model="editForm.inviter_line_name" size="large" /></div>
                 <div><label class="block text-sm mb-1" style="color:#606266;">LINE 暱稱</label><el-input v-model="editForm.line_name" size="large" /></div>
+                <div><label class="block text-sm mb-1" style="color:#606266;">LINE 名稱（官方交談顯示）</label><el-input v-model="editForm.line_display_name" placeholder="與官方帳號交談時顯示的名稱" size="large" /></div>
                 <div><label class="block text-sm mb-1" style="color:#606266;">官網信箱</label><el-input v-model="editForm.official_email" size="large" /></div>
                 <div><label class="block text-sm mb-1" style="color:#606266;">TradingView 帳號</label><el-input v-model="editForm.tradingview_account" size="large" /></div>
                 <div><label class="block text-sm mb-1" style="color:#606266;">BingX 註冊日期</label><el-input v-model="editForm.bingx_register_date" placeholder="YYYY-MM-DD HH:mm:ss" size="large" /></div>
@@ -293,7 +343,27 @@ function formatNumber(n) {
                   <div v-else class="text-sm" style="color:#dcdfe6;">--</div>
                 </div>
                 <div><div class="text-sm mb-1" style="color:#606266;">指標版本</div><div class="font-medium" style="color:#303133;">{{ user.indicator_version || '--' }}</div></div>
-                <div><div class="text-sm mb-1" style="color:#606266;">社群互動</div><div class="font-medium" style="color:#303133;">{{ user.community_interaction || '--' }}</div></div>
+                <div>
+                  <div class="text-sm mb-1" style="color:#606266;">
+                    社群互動<span v-if="lineStats && lineStats.dateRange !== '--'">({{ lineStats.dateRange }})</span>
+                  </div>
+                  <div v-if="lineStats" class="font-medium flex items-center gap-2" style="color:#303133;">
+                    <span>{{ lineStats.latestCount }} 則</span>
+                    <span v-if="lineStats.changeDir === 'up' && lineStats.changePct !== null"
+                      class="text-xs font-semibold" style="color:#67C23A;">▲ {{ lineStats.changePct }}%</span>
+                    <span v-else-if="lineStats.changeDir === 'down'"
+                      class="text-xs font-semibold" style="color:#F56C6C;">▼ {{ Math.abs(lineStats.changePct) }}%</span>
+                    <span v-else-if="lineStats.changeDir === 'up'"
+                      class="text-xs font-semibold" style="color:#67C23A;">▲ 新增</span>
+                  </div>
+                  <div v-else class="font-medium" style="color:#303133;">--</div>
+                </div>
+                <div>
+                  <div class="text-sm mb-1" style="color:#606266;">社群互動 總計</div>
+                  <div class="font-medium" style="color:#303133;">
+                    {{ lineStats ? lineStats.total.toLocaleString() + ' 則' : '--' }}
+                  </div>
+                </div>
                 <div><div class="text-sm mb-1" style="color:#606266;">RFM 受眾標籤</div><div class="font-medium" style="color:#303133;">{{ user.rfm_score_tag || '--' }}</div></div>
                 <div class="col-span-2">
                   <div class="text-sm mb-2" style="color:#606266;">備註標籤</div>
@@ -312,7 +382,26 @@ function formatNumber(n) {
               <div class="grid grid-cols-2 gap-4">
                 <div><label class="block text-sm mb-1" style="color:#606266;">RFM 受眾標籤</label><el-input v-model="editForm.rfm_score_tag" size="large" /></div>
                 <div><label class="block text-sm mb-1" style="color:#606266;">指標版本</label><el-input v-model="editForm.indicator_version" size="large" /></div>
-                <div><label class="block text-sm mb-1" style="color:#606266;">社群互動</label><el-input v-model="editForm.community_interaction" size="large" /></div>
+                <div>
+                  <label class="block text-sm mb-1" style="color:#606266;">
+                    社群互動<span v-if="lineStats && lineStats.dateRange !== '--'">({{ lineStats.dateRange }})</span>
+                  </label>
+                  <div class="px-3 py-2 rounded text-sm flex items-center gap-2" style="background:#f5f7fa;border:1px solid #e4e7ed;color:#606266;min-height:40px;">
+                    <template v-if="lineStats">
+                      <span>{{ lineStats.latestCount }} 則</span>
+                      <span v-if="lineStats.changeDir === 'up' && lineStats.changePct !== null" style="color:#67C23A;">▲ {{ lineStats.changePct }}%</span>
+                      <span v-else-if="lineStats.changeDir === 'down'" style="color:#F56C6C;">▼ {{ Math.abs(lineStats.changePct) }}%</span>
+                      <span v-else-if="lineStats.changeDir === 'up'" style="color:#67C23A;">▲ 新增</span>
+                    </template>
+                    <template v-else>-- （由 LINE 對話匯入自動更新）</template>
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-sm mb-1" style="color:#606266;">社群互動 總計</label>
+                  <div class="px-3 py-2 rounded text-sm" style="background:#f5f7fa;border:1px solid #e4e7ed;color:#606266;min-height:40px;line-height:24px;">
+                    {{ lineStats ? lineStats.total.toLocaleString() + ' 則' : '--' }}
+                  </div>
+                </div>
                 <div><label class="block text-sm mb-1" style="color:#606266;">備註標籤（逗號分隔）</label><el-input v-model="editForm._note_tags_str" placeholder="例：高活躍、活躍" size="large" /></div>
               </div>
             </template>

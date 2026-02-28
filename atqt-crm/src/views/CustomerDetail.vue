@@ -81,7 +81,7 @@ function formatNumber(n) {
       <div class="flex items-center gap-2 text-sm" style="color:#909399;">
         <button class="hover:text-[#409EFF] transition-colors" @click="router.push('/crm')">客戶總表</button>
         <span class="material-symbols-outlined text-base">chevron_right</span>
-        <span class="font-semibold" style="color:#1a1d23;">客戶概覽</span>
+        <span class="font-semibold" style="color:#000000;">客戶概覽</span>
       </div>
       <div class="flex items-center gap-2">
         <button
@@ -140,7 +140,7 @@ function formatNumber(n) {
             </div>
             <div class="flex-1 flex flex-col gap-2">
               <div class="flex items-center gap-3 flex-wrap">
-                <h1 class="text-xl font-bold" style="color:#1a1d23;">UID: {{ user.uid }}</h1>
+                <h1 class="text-xl font-bold" style="color:#000000;">UID: {{ user.uid }}</h1>
                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-sm font-bold uppercase tracking-wide"
                   :style="(user.account_type === 'new') ? 'background:rgba(103,194,58,0.1);color:#67C23A;border:1px solid rgba(103,194,58,0.2);' : 'background:#f5f7fa;color:#909399;border:1px solid #e4e7ed;'">
                   {{ accountTypeLabel(user.account_type) }}
@@ -172,7 +172,7 @@ function formatNumber(n) {
         <div class="bg-white rounded-md" style="border:1px solid #e4e7ed;box-shadow:0 0 12px rgba(0,0,0,0.05);">
           <div class="px-5 py-4 flex items-center gap-2" style="border-bottom:1px solid #e4e7ed;">
             <span class="material-symbols-outlined text-[20px]" style="color:#409EFF;">badge</span>
-            <span class="text-base font-bold" style="color:#1a1d23;">身份與帳號資料</span>
+            <span class="text-base font-bold" style="color:#000000;">身份與帳號資料</span>
           </div>
           <div class="p-5">
             <template v-if="!editing">
@@ -225,7 +225,7 @@ function formatNumber(n) {
         <div class="bg-white rounded-md" style="border:1px solid #e4e7ed;box-shadow:0 0 12px rgba(0,0,0,0.05);">
           <div class="px-5 py-4 flex items-center gap-2" style="border-bottom:1px solid #e4e7ed;">
             <span class="material-symbols-outlined text-[20px]" style="color:#409EFF;">attach_money</span>
-            <span class="text-base font-bold" style="color:#1a1d23;">財務總覽</span>
+            <span class="text-base font-bold" style="color:#000000;">財務總覽</span>
           </div>
           <div class="p-5">
             <template v-if="!editing">
@@ -273,7 +273,7 @@ function formatNumber(n) {
         <div class="bg-white rounded-md" style="border:1px solid #e4e7ed;box-shadow:0 0 12px rgba(0,0,0,0.05);">
           <div class="px-5 py-4 flex items-center gap-2" style="border-bottom:1px solid #e4e7ed;">
             <span class="material-symbols-outlined text-[20px]" style="color:#409EFF;">label</span>
-            <span class="text-base font-bold" style="color:#1a1d23;">CRM 指標與標籤</span>
+            <span class="text-base font-bold" style="color:#000000;">CRM 指標與標籤</span>
           </div>
           <div class="p-5">
             <template v-if="!editing">
@@ -324,7 +324,7 @@ function formatNumber(n) {
           <div class="px-5 py-4 flex items-center justify-between" style="border-bottom:1px solid #e4e7ed;background:#f5f7fa;border-radius:4px 4px 0 0;">
             <div class="flex items-center gap-2">
               <span class="material-symbols-outlined text-[20px]" style="color:#409EFF;">edit_note</span>
-              <span class="text-base font-bold" style="color:#1a1d23;">內部備註</span>
+              <span class="text-base font-bold" style="color:#000000;">內部備註</span>
             </div>
           </div>
 
@@ -365,7 +365,7 @@ function formatNumber(n) {
 
           <!-- Quick Actions -->
           <div class="p-5" style="border-top:1px solid #e4e7ed;background:#f5f7fa;border-radius:0 0 4px 4px;">
-            <h4 class="text-sm font-bold uppercase tracking-wider mb-3" style="color:#909399;">快捷操作</h4>
+            <h4 class="text-sm font-bold uppercase tracking-wider mb-3" style="color:#1a1d23;">快捷操作</h4>
             <div class="grid grid-cols-2 gap-3">
               <button
                 class="flex items-center justify-center gap-2 py-2.5 rounded-md text-sm transition-colors"

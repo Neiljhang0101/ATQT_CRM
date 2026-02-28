@@ -254,7 +254,7 @@ async function submitCreateForm() {
           <label class="block text-sm font-medium mb-1.5" style="color:#909399;">搜尋</label>
           <div class="relative">
             <span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-[18px]" style="color:#909399;">search</span>
-            <input v-model="searchUid" type="text" placeholder="搜尋 UID / LINE 昵稱..."
+            <input v-model="searchUid" type="text" placeholder="搜尋 UID / LINE 暱稱..."
               class="w-full pl-9 pr-3 py-2 bg-white text-sm rounded focus:outline-none transition-shadow"
               style="border:1px solid #dcdfe6;font-family:inherit;"
               @focus="$event.target.style.borderColor='#409EFF'"
@@ -317,7 +317,7 @@ async function submitCreateForm() {
           </template>
         </el-table-column>
 
-        <el-table-column label="LINE 昵稱" width="160">
+        <el-table-column label="LINE 暱稱" width="160">
           <template #default="{ row }">
             <span v-if="row.line_name" style="color:#1a1d23;">{{ row.line_name }}</span>
             <span v-else class="text-sm" style="color:#c0c4cc;">-</span>
@@ -447,11 +447,11 @@ async function submitCreateForm() {
             <el-input v-model="createForm.inviter_uid_code" placeholder="選填" />
           </div>
           <div>
-            <label class="block text-sm mb-1.5 font-medium" style="color:#606266;">邀請人 LINE 昵稱</label>
+            <label class="block text-sm mb-1.5 font-medium" style="color:#606266;">邀請人 LINE 暱稱</label>
             <el-input v-model="createForm.inviter_line_name" placeholder="選填" />
           </div>
           <div>
-            <label class="block text-sm mb-1.5 font-medium" style="color:#606266;">LINE 昵稱</label>
+            <label class="block text-sm mb-1.5 font-medium" style="color:#606266;">LINE 暱稱</label>
             <el-input v-model="createForm.line_name" placeholder="選填" />
           </div>
           <div>

@@ -79,18 +79,18 @@ function formatNumber(n) {
     <!-- 頂部區域：導航 + 操作按鈕 -->
     <div class="flex flex-row items-center justify-between gap-4 flex-wrap shrink-0">
       <div class="flex items-center gap-2 text-sm" style="color:#909399;">
+        <button
+          class="w-8 h-8 flex items-center justify-center rounded-full transition-colors hover:bg-[#e6f0ff] hover:text-[#409EFF] flex-shrink-0"
+          style="background:#f5f7fa;border:1px solid #e4e7ed;color:#606266;"
+          @click="router.back()"
+        >
+          <span class="material-symbols-outlined text-[18px]">arrow_back</span>
+        </button>
         <button class="hover:text-[#409EFF] transition-colors" @click="router.push('/crm')">客戶總表</button>
         <span class="material-symbols-outlined text-base">chevron_right</span>
         <span class="font-semibold" style="color:#000000;">客戶概覽</span>
       </div>
       <div class="flex items-center gap-2">
-        <button
-          class="h-9 px-4 flex items-center gap-1.5 text-sm font-medium rounded-md shadow-sm transition-colors"
-          style="background:#fff;border:1px solid #dcdfe6;color:#606266;"
-          @click="router.back()"
-        >
-          <span class="material-symbols-outlined text-[18px]">arrow_back</span> 返回
-        </button>
         <template v-if="user">
           <button v-if="!editing"
             class="h-9 px-4 flex items-center gap-1.5 text-sm font-medium rounded-md shadow-sm transition-colors"

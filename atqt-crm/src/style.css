@@ -1,0 +1,115 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
+@import "tailwindcss";
+
+/* ── Design System §1 字體規範：思源黑體 (Noto Sans TC) 為全站主要字型 ── */
+/* ── Tailwind v4 @theme 令牌（對應 Stitch HTML 設計語彙）── */
+@theme {
+  --font-sans: 'Noto Sans TC', 'Inter', system-ui, Helvetica, Arial, sans-serif;
+  --font-display: 'Noto Sans TC', 'Inter', system-ui, Helvetica, Arial, sans-serif;
+
+  /* 主色系 */
+  --color-primary: #409EFF;
+  --color-primary-light: #ecf5ff;
+  --color-primary-dark: #337ecc;
+  --color-primary-hover: #66b1ff;
+
+  /* 語意色 */
+  --color-success: #67C23A;
+  --color-warning: #E6A23C;
+  --color-danger: #F56C6C;
+  --color-info: #909399;
+
+  /* 背景色 */
+  --color-background-light: #f5f7fa;
+  --color-surface: #ffffff;
+
+  /* 文字色 */
+  --color-text-main: #1a1d23;
+  --color-text-regular: #3d4148;
+  --color-text-secondary: #909399;
+
+  /* 邊框色 */
+  --color-border-base: #dcdfe6;
+  --color-border-light: #e4e7ed;
+
+  /* 陰影 */
+  --shadow-card: 0 0 12px rgba(0,0,0,0.05);
+  --shadow-sm: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+/* ── Element Plus CSS 變數覆寫（Design System §4）── */
+:root {
+  --el-color-primary: #409EFF;
+  --el-color-primary-light-3: #66b1ff;
+  --el-color-primary-light-9: #ecf5ff;
+  --el-border-radius-base: 6px;
+  --el-border-radius-small: 4px;
+  --el-font-family: 'Noto Sans TC', 'Inter', system-ui, Helvetica, Arial, sans-serif;
+  --el-font-size-base: 16px;
+  --el-font-size-small: 14px; /* minimum font size */
+  --el-font-size-large: 18px;
+  --el-box-shadow-base: 0 0 12px rgba(0,0,0,0.05);
+  --el-fill-color-light: #f5f7fa;
+  --el-bg-color-page: #f5f7fa;
+  --el-form-label-font-size: 16px;
+  --el-text-color-primary: #1a1d23;
+  --el-text-color-regular: #3d4148;
+  --el-text-color-secondary: #909399;
+}
+
+/* ── 表單元件字型強制放大（覆蓋 Element Plus 預設 14px）── */
+.el-input__inner,
+.el-textarea__inner,
+.el-select__placeholder,
+.el-select-v2__placeholder,
+.el-input__placeholder,
+.el-form-item__label,
+.el-form-item__content,
+.el-select .el-input__inner,
+.el-date-editor .el-input__inner,
+.el-radio__label,
+.el-checkbox__label,
+.el-button {
+  font-size: 16px !important;
+}
+
+/* ── Global Reset ── */
+:root {
+  font-family: 'Noto Sans TC', 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color-scheme: light;
+  color: #303133;
+  background-color: #f5f7fa;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+}
+
+#app {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  padding: 0;
+  text-align: left;
+}
+
+/* ── 通用卡片陰影工具類別 ── */
+.shadow-card {
+  box-shadow: 0 0 12px rgba(0,0,0,0.05);
+}

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>BingX Proxy 測試</title>
+  <style>
+    body { font-family: monospace; padding: 20px; background: #1a1a1a; color: #e0e0e0; }
+    button { padding: 10px 20px; background: #007bff; color: white; border: none; cursor: pointer; border-radius: 4px; font-size: 14px; }
+    pre { background: #2a2a2a; padding: 15px; border-radius: 6px; overflow: auto; max-height: 600px; font-size: 12px; }
+    .ok { color: #66ff66; } .err { color: #ff6666; }
+  </style>
+</head>
+<body>
+  <h2>BingX Proxy 測試</h2>
+  <p>此頁透過 Vite Proxy → <code>/api/bingx</code> 呼叫 BingX API</p>
+  <button onclick="testApi()">▶ 測試 inviteAccountList</button>
+  <pre id="out">等待測試...</pre>
+
+<script>
+// ── 貼上你的 Key（此頁面只在本機使用，不會上傳）────────────────
+const API_KEY    = 'vrI4J6EZTWdq6oII9jM5U0p53XyH4ee2xkdVM11YtqIwPu5Pmylt6otoxB8eHEWESrxy4BwGX5nnUdZ6hMIzAA'
+const SECRET_KEY = 'MQ9dtJGBAzvvXGNzRUOmpbnjmhiUNxlQzAROdywZ2nsxVbEqX9XMJekqjiLnJ9WBsEEVd8rmY4hLGJwvmWFEA'
+
+async function hmacSha256(key, msg) {
+  const enc = new TextEncoder()
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw', enc.encode(key), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+  )
+  const sig = await crypto.subtle.sign('HMAC', cryptoKey, enc.encode(msg))
+  return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2,'0')).join('')
+}
+
+async function testApi() {
+  const out = document.getElementById('out')
+  out.innerHTML = '⏳ 呼叫中...'
+  try {
+    const params = {
+      pageIndex: '1',
+      pageSize: '10',
+      recvWindow: '5000',
+      timestamp: String(Date.now()),
+    }
+    const sorted = Object.keys(params).sort().map(k => `${k}=${params[k]}`).join('&')
+    const sig = await hmacSha256(SECRET_KEY, sorted)
+    const qs = `${sorted}&signature=${sig}`
+
+    const url = `/api/bingx/openApi/agent/v1/account/inviteAccountList?${qs}`
+    out.innerHTML = `📤 呼叫 Proxy URL:\n/api/bingx/openApi/agent/v1/account/inviteAccountList\n\n⏳ 等待回應...`
+
+    const res = await fetch(url, { headers: { 'X-BX-APIKEY': API_KEY } })
+    const json = await res.json()
+
+    if (json.code === 0) {
+      const list = json.data?.list ?? []
+      out.innerHTML = `<span class="ok">✅ 成功！HTTP ${res.status} | BingX code: 0 | 共 ${json.data?.total} 位下線，本頁 ${list.length} 筆</span>\n\n第一筆：\n${JSON.stringify(list[0], null, 2)}\n\n完整 data.total = ${json.data?.total}`
+    } else {
+      out.innerHTML = `<span class="err">❌ BingX 回傳錯誤 code: ${json.code}\nmsg: ${json.msg}</span>\n\n完整回應：\n${JSON.stringify(json, null, 2)}`
+    }
+  } catch(e) {
+    out.innerHTML = `<span class="err">❌ 網路/解析錯誤：${e.message}</span>`
+  }
+}
+</script>
+</body>
+</html>

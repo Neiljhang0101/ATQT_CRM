@@ -74,7 +74,7 @@ function formatNumber(n) {
 </script>
 
 <template>
-  <div class="flex flex-col gap-5 h-full">
+  <div class="flex flex-col gap-5 lg:h-full">
 
     <!-- 頂部區域：導航 + 操作按鈕 -->
     <div class="flex flex-row items-center justify-between gap-4 flex-wrap shrink-0">
@@ -125,10 +125,10 @@ function formatNumber(n) {
     </div>
 
     <!-- 主要內容區 -->
-    <div v-else class="flex flex-col lg:flex-row gap-6 flex-1 overflow-hidden">
+    <div v-else class="flex flex-col lg:flex-row gap-6 lg:flex-1 lg:overflow-hidden">
 
       <!-- 左側：主要資料 -->
-      <div class="flex-1 flex flex-col gap-5 overflow-y-auto pb-4">
+      <div class="flex flex-col gap-5 pb-4 lg:flex-1 lg:overflow-y-auto">
 
         <!-- Profile Summary Card -->
         <div class="bg-white rounded-md" style="border:1px solid #e4e7ed;box-shadow:0 0 12px rgba(0,0,0,0.05);">
@@ -272,7 +272,7 @@ function formatNumber(n) {
       </div>
 
       <!-- 右側：CRM 指標 + 備註 -->
-      <div class="w-full lg:w-96 flex-shrink-0 flex flex-col gap-5">
+      <div class="w-full lg:w-96 lg:flex-shrink-0 lg:overflow-y-auto flex flex-col gap-5">
 
         <!-- CRM Metrics & Tags -->
         <div class="bg-white rounded-md" style="border:1px solid #e4e7ed;box-shadow:0 0 12px rgba(0,0,0,0.05);">

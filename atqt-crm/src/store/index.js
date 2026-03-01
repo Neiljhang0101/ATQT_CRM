@@ -32,6 +32,7 @@ export function createDefaultUser(overrides = {}) {
     bingx_vip_level: null,     // 19. BingX VIP 等級
     first_deposit_time: null,  // 20. 首次入金時間
     last_active_date: null,    // 21. 虛擬最後活躍日 YYYY-MM-DD（SDD Spec: 每週匯入心跳更新機制）
+    in_advanced_group: false,  // 22. 是否在進階群內
     // ── 以下為 API 同步欄位（非 XLSX 匯入範疇） ──
     source: null,
     balance: null,
@@ -160,8 +161,12 @@ export const useCrmStore = defineStore('crm', () => {
     if (m >= 3 && r === 2)               tags.push('⏰ 流失預警')
     // 行為狀態类
     if (u.has_deposit && !u.has_traded)  tags.push('🌱 入金未交易')
-    // 初次交易：近期活躍(R≥4)、剛開始交易(近30天交易天數≤2)、且非新手保護期標籤
-    if (r >= 4 && u.has_traded && (u.trade_count_30d || 0) <= 2 && rfm_tag !== '🌟 新手待破蛋') tags.push('🚀 初次交易')
+    // 社群互動頻率：依 LINE 每週訊息數判斷（以 line_msg_count_7d 為準，100則/週為最高）
+    const msgCount = u.line_msg_count_7d || 0
+    if (msgCount >= 100)     tags.push('💬 社群超高互動')
+    else if (msgCount >= 50) tags.push('💬 社群高互動')
+    else if (msgCount >= 10) tags.push('💬 社群互動中')
+    else if (rfm_tag !== '🌟 新手待破蛋') tags.push('🔇 社群低互動')
     return tags
   }
 
@@ -382,7 +387,7 @@ export const useCrmStore = defineStore('crm', () => {
             bingx_vip_level: (item.userLevel != null && item.userLevel !== 0) ? String(item.userLevel) : null,
             total_assets: balance,
             line_name: null,
-            line_msg_count_7d: 0,
+            // 注意：不在此設定 line_msg_count_7d，避免覆蓋 LINE 對話匯入的真實訊息數
           }
         })
       : []

@@ -27,8 +27,10 @@ function handleSyncCommand(cmd) {
 
 const filterMode   = ref('all')
 const sourceFilter = ref('all')
-const tagFilter    = ref('')
+const audienceTags = ref([])   // 分眾標籤多選
+const socialTags   = ref([])   // 社群互動標籤多選
 const searchUid    = ref('')
+const hideNonGroup = ref(true)
 const currentPage  = ref(1)
 const pageSize     = ref(50)
 const sortField    = ref('')
@@ -42,13 +44,49 @@ function handleSortChange({ prop, order }) {
 
 const oldCount = computed(() => crmStore.users.filter(u => u.source === 'old' || u.account_type === 'old').length)
 const newCount = computed(() => crmStore.users.filter(u => u.source === 'new' || u.account_type === 'new').length)
+const advancedGroupCount = computed(() => crmStore.users.filter(u => u.in_advanced_group).length)
+
+// 受篩選條件（來源 + 群內）影響的基底資料，用於計算各分類數量
+const baseData = computed(() => {
+  let data = crmStore.users
+  if (sourceFilter.value !== 'all') data = data.filter(u => (u.source || u.account_type) === sourceFilter.value)
+  if (hideNonGroup.value) data = data.filter(u => u.in_advanced_group)
+  return data
+})
+const vipCount      = computed(() => baseData.value.filter(u => u.balance > 5000).length)
+const sleepingCount = computed(() => {
+  const now = Date.now()
+  const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000
+  const sevenDaysMs  = 7  * 24 * 60 * 60 * 1000
+  return baseData.value.filter(u => {
+    const regDate = u.register_date || u.bingx_register_date
+    const fdDate  = u.first_deposit_time
+    const refDate = regDate || fdDate
+    if (refDate && now - new Date(refDate).getTime() <= sevenDaysMs) return false
+    const activeDate = u.last_active_date || u.last_trade_date
+    if (!activeDate) return true
+    return now - new Date(activeDate).getTime() > thirtyDaysMs
+  }).length
+})
 
 const filteredData = computed(() => {
-  let data = crmStore.users
-  if (filterMode.value === 'vip') data = crmStore.vipUsers
-  else if (filterMode.value === 'sleeping') data = crmStore.sleepingUsers
-  if (sourceFilter.value !== 'all') data = data.filter(u => (u.source || u.account_type) === sourceFilter.value)
-  if (tagFilter.value) data = data.filter(u => Array.isArray(u.tags) && u.tags.some(t => t.includes(tagFilter.value)))
+  let data = baseData.value
+  if (filterMode.value === 'vip') data = data.filter(u => u.balance > 5000)
+  else if (filterMode.value === 'sleeping') {
+    const now = Date.now()
+    const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000
+    const sevenDaysMs  = 7  * 24 * 60 * 60 * 1000
+    data = data.filter(u => {
+      const regDate  = u.register_date || u.bingx_register_date
+      const refDate  = regDate || u.first_deposit_time
+      if (refDate && now - new Date(refDate).getTime() <= sevenDaysMs) return false
+      const activeDate = u.last_active_date || u.last_trade_date
+      if (!activeDate) return true
+      return now - new Date(activeDate).getTime() > thirtyDaysMs
+    })
+  }
+  if (audienceTags.value.length) data = data.filter(u => Array.isArray(u.tags) && audienceTags.value.some(k => u.tags.some(t => t.includes(k))))
+  if (socialTags.value.length)   data = data.filter(u => Array.isArray(u.tags) && socialTags.value.some(k => u.tags.some(t => t.includes(k))))
   if (searchUid.value.trim()) {
     data = data.filter(u =>
       String(u.uid).includes(searchUid.value.trim()) ||
@@ -196,12 +234,15 @@ function tagStyle(tag) {
   if (tag.includes('高淨值'))            return { bg: 'rgba(230,162,60,0.10)', color: '#E6A23C', border: 'rgba(230,162,60,0.3)' }
   if (tag.includes('新手待破蛋'))        return { bg: 'rgba(103,194,58,0.12)',  color: '#52A135', border: 'rgba(103,194,58,0.4)' }
   if (tag.includes('入金未交易'))        return { bg: 'rgba(32,178,135,0.10)',  color: '#18A77A', border: 'rgba(32,178,135,0.35)' }
-  if (tag.includes('初次交易'))          return { bg: 'rgba(144,97,219,0.11)',  color: '#7C4DCC', border: 'rgba(144,97,219,0.35)' }
   if (tag.includes('高潛力活躍'))        return { bg: 'rgba(245,108,108,0.10)', color: '#D94F4F', border: 'rgba(245,108,108,0.32)' }
   if (tag.includes('穩定交易'))          return { bg: '#ecf5ff',                color: '#409EFF', border: 'rgba(64,158,255,0.35)' }
   if (tag.includes('流失預警'))          return { bg: 'rgba(230,100,0,0.10)',   color: '#C05800', border: 'rgba(230,100,0,0.32)' }
   if (tag.includes('沉睡') || tag.includes('沈睡')) return { bg: 'rgba(245,108,108,0.12)', color: '#F56C6C', border: 'rgba(245,108,108,0.3)' }
   if (tag.includes('已流失'))            return { bg: 'rgba(144,158,171,0.13)', color: '#607D8B', border: 'rgba(144,158,171,0.35)' }
+  if (tag.includes('社群超高互動'))       return { bg: 'rgba(0,196,180,0.13)',   color: '#008C80', border: 'rgba(0,196,180,0.4)' }
+  if (tag.includes('社群高互動'))         return { bg: 'rgba(32,178,135,0.11)',  color: '#18A77A', border: 'rgba(32,178,135,0.38)' }
+  if (tag.includes('社群互動中'))         return { bg: 'rgba(64,158,255,0.10)',  color: '#337ECC', border: 'rgba(64,158,255,0.32)' }
+  if (tag.includes('社群低互動'))         return { bg: 'rgba(144,158,171,0.09)', color: '#8C9BAA', border: 'rgba(144,158,171,0.28)' }
   return { bg: '#f5f7fa', color: '#606266', border: '#e4e7ed' }
 }
 
@@ -280,6 +321,7 @@ const createForm = ref({
   official_email: '', tradingview_account: '', bingx_register_date: '',
   note_tags: '', text_notes: '', indicator_version: '',
   community_interaction: '', bingx_vip_level: '', first_deposit_time: '',
+  in_advanced_group: false,
 })
 const createFormRef = ref(null)
 const createRules = {
@@ -294,6 +336,7 @@ function openCreateDialog() {
     official_email: '', tradingview_account: '', bingx_register_date: '',
     note_tags: '', text_notes: '', indicator_version: '',
     community_interaction: '', bingx_vip_level: '', first_deposit_time: '',
+    in_advanced_group: false,
   })
   showCreateDialog.value = true
 }
@@ -426,64 +469,97 @@ async function submitCreateForm() {
       </div>
     </div>
 
-    <div class="bg-white rounded-lg p-4" style="border:1px solid #e4e7ed;box-shadow:0 2px 4px rgba(0,0,0,0.05);">
-      <div class="flex flex-wrap items-end gap-4">
-        <div class="flex-1 min-w-[220px]">
-          <label class="block text-sm font-medium mb-1.5" style="color:#909399;">搜尋</label>
-          <div class="relative">
-            <span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-[18px]" style="color:#909399;">search</span>
-            <input v-model="searchUid" type="text" placeholder="搜尋 UID / LINE 暱稱..."
-              class="w-full pl-9 pr-3 py-2 bg-white text-sm rounded focus:outline-none transition-shadow"
-              style="border:1px solid #dcdfe6;font-family:inherit;"
-              @focus="$event.target.style.borderColor='#409EFF'"
-              @blur="$event.target.style.borderColor='#dcdfe6'" />
-          </div>
+    <div class="bg-white rounded-lg px-4 py-3" style="border:1px solid #e4e7ed;box-shadow:0 2px 4px rgba(0,0,0,0.05);">
+      <div class="flex flex-wrap items-center gap-2">
+
+        <!-- 搜尋框 -->
+        <div class="relative" style="width:200px;">
+          <span class="absolute left-2.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-[16px]" style="color:#909399;">search</span>
+          <input v-model="searchUid" type="text" placeholder="搜尋 UID / LINE 暱稱..."
+            class="w-full pl-8 pr-3 bg-white focus:outline-none"
+            style="border:1px solid #dcdfe6;font-family:inherit;height:34px;font-size:14px;border-radius:3px;"
+            @focus="$event.target.style.borderColor='#409EFF'"
+            @blur="$event.target.style.borderColor='#dcdfe6'" />
         </div>
-        <div>
-          <label class="block text-sm font-medium mb-1.5" style="color:#909399;">帳號來源</label>
-          <div class="flex gap-1.5">
-            <button v-for="s in [['all','全部'],['old','舊帳號'],['new','新帳號']]" :key="s[0]"
-              class="px-3 py-1.5 text-sm rounded transition-colors"
-              :style="sourceFilter === s[0] ? 'background:#409EFF;color:#fff;font-weight:500;' : 'background:#f5f7fa;color:#3d4148;border:1px solid #e4e7ed;'"
-              @click="sourceFilter = s[0]">{{ s[1] }}</button>
-          </div>
+
+        <!-- 帳號來源 -->
+        <div class="flex gap-1">
+          <button v-for="s in [['all','全部'],['old','舊帳號'],['new','新帳號']]" :key="s[0]"
+            class="px-2.5 py-1 transition-colors"
+            style="font-size:14px;border-radius:3px;"
+            :style="sourceFilter === s[0] ? 'background:#409EFF;color:#fff;font-weight:500;' : 'background:#f5f7fa;color:#3d4148;border:1px solid #e4e7ed;'"
+            @click="sourceFilter = s[0]">{{ s[1] }}</button>
         </div>
-        <div class="w-full">
-          <label class="block text-sm font-medium mb-1.5" style="color:#909399;">受眾篩選</label>
-          <div class="flex gap-1.5 flex-wrap">
-            <button class="px-3 py-1.5 text-sm rounded transition-colors"
-              :style="filterMode === 'all' ? 'background:#409EFF;color:#fff;font-weight:500;' : 'background:#f5f7fa;color:#3d4148;border:1px solid #e4e7ed;'"
-              @click="filterMode = 'all'; tagFilter = ''">全部 ({{ crmStore.users.length }})</button>
-            <button class="px-3 py-1.5 text-sm rounded transition-colors"
+
+        <!-- 進階群內 -->
+        <el-checkbox v-model="hideNonGroup" @change="currentPage = 1">
+          <span style="font-size:14px;font-weight:500;color:#303133;">進階群內</span>
+          <span class="ml-1 px-1.5 font-semibold" style="font-size:14px;background:rgba(64,158,255,0.12);color:#409EFF;border:1px solid rgba(64,158,255,0.25);border-radius:3px;">{{ advancedGroupCount }}</span>
+        </el-checkbox>
+
+        <div style="width:1px;height:22px;background:#e4e7ed;flex-shrink:0;"></div>
+
+        <!-- 受眾模式按鈕 -->
+        <div class="flex gap-1">
+          <button class="px-2.5 py-1 transition-colors"
+            style="font-size:14px;border-radius:3px;"
+            :style="filterMode === 'all' ? 'background:#409EFF;color:#fff;font-weight:500;' : 'background:#f5f7fa;color:#3d4148;border:1px solid #e4e7ed;'"
+            @click="filterMode = 'all'; audienceTags = []; socialTags = []">全部 ({{ baseData.length }})</button>
+          <el-tooltip content="資產大於 5,000 USDT" placement="top" :show-after="300">
+            <button class="px-2.5 py-1 transition-colors"
+              style="font-size:14px;border-radius:3px;"
               :style="filterMode === 'vip' ? 'background:#E6A23C;color:#fff;font-weight:500;' : 'background:rgba(230,162,60,0.08);color:#E6A23C;border:1px solid rgba(230,162,60,0.3);'"
-              @click="filterMode = 'vip'; tagFilter = ''">高淨值 ({{ crmStore.vipUsers.length }})</button>
-            <button class="px-3 py-1.5 text-sm rounded transition-colors"
-              :style="filterMode === 'sleeping' ? 'background:#F56C6C;color:#fff;font-weight:500;' : 'background:rgba(245,108,108,0.08);color:#F56C6C;border:1px solid rgba(245,108,108,0.3);'"
-              @click="filterMode = 'sleeping'; tagFilter = ''">潛在流失風險 ({{ crmStore.sleepingUsers.length }})</button>
-          </div>
-          <!-- 分眾標籤快篩 -->
-          <div class="flex flex-wrap gap-1.5 mt-2">
-            <span class="text-xs mt-0.5 mr-0.5" style="color:#909399;">標籤：</span>
-            <button v-for="[key, label, ts] in [
-              ['核心 VIP',   '👑 核心 VIP',   { bg:'rgba(230,162,60,0.13)', color:'#B7860B', border:'rgba(230,162,60,0.4)'}],
-              ['新手待破蛋', '🌟 新手待破蛋', { bg:'rgba(103,194,58,0.12)', color:'#52A135', border:'rgba(103,194,58,0.4)'}],
-              ['入金未交易', '🌱 入金未交易', { bg:'rgba(32,178,135,0.10)', color:'#18A77A', border:'rgba(32,178,135,0.35)'}],
-              ['初次交易',   '🚀 初次交易',   { bg:'rgba(144,97,219,0.11)', color:'#7C4DCC', border:'rgba(144,97,219,0.35)'}],
-              ['高潛力活躍', '🔥 高潛力活躍戶',{ bg:'rgba(245,108,108,0.10)', color:'#D94F4F', border:'rgba(245,108,108,0.32)'}],
-              ['穩定交易',   '📊 穩定交易戶', { bg:'#ecf5ff', color:'#409EFF', border:'rgba(64,158,255,0.35)'}],
-              ['流失預警',   '⏰ 流失預警',   { bg:'rgba(230,100,0,0.10)', color:'#C05800', border:'rgba(230,100,0,0.32)'}],
-              ['已流失',     '❄️ 已流失老客',  { bg:'rgba(144,158,171,0.13)', color:'#607D8B', border:'rgba(144,158,171,0.35)'}],
-              ['沉睡',       '💤 沉睡流失',    { bg:'rgba(245,108,108,0.12)', color:'#F56C6C', border:'rgba(245,108,108,0.3)'}],
-              ['高淨值',     '⚠️ 沉睡高淨值',  { bg:'rgba(230,162,60,0.10)', color:'#E6A23C', border:'rgba(230,162,60,0.3)'}],
-            ]" :key="key"
-              class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium cursor-pointer transition-all"
-              :style="tagFilter === key
-                ? `background:${ts.color};color:#fff;border:1px solid ${ts.border};`
-                : `background:${ts.bg};color:${ts.color};border:1px solid ${ts.border};opacity:0.85;`"
-              @click="tagFilter = tagFilter === key ? '' : key; filterMode = 'all'"
-            >{{ label }}</button>
-          </div>
+              @click="filterMode = 'vip'; audienceTags = []; socialTags = []">高淨值 ({{ vipCount }})</button>
+          </el-tooltip>
+          <button class="px-2.5 py-1 transition-colors"
+            style="font-size:14px;border-radius:3px;"
+            :style="filterMode === 'sleeping' ? 'background:#F56C6C;color:#fff;font-weight:500;' : 'background:rgba(245,108,108,0.08);color:#F56C6C;border:1px solid rgba(245,108,108,0.3);'"
+            @click="filterMode = 'sleeping'; audienceTags = []; socialTags = []">潛在流失 ({{ sleepingCount }})</button>
         </div>
+
+        <div style="width:1px;height:22px;background:#e4e7ed;flex-shrink:0;"></div>
+
+        <!-- 分眾標籤下拉多選 -->
+        <el-select
+          v-model="audienceTags"
+          multiple
+          placeholder="分眾標籤"
+          size="default"
+          clearable
+          style="width:280px;--el-border-radius-base:3px;"
+          @change="filterMode = 'all'"
+        >
+          <el-option v-for="t in [
+            { key:'核心 VIP',   label:'👑 核心 VIP' },
+            { key:'新手待破蛋', label:'🌟 新手待破蛋' },
+            { key:'入金未交易', label:'🌱 入金未交易' },
+            { key:'高潛力活躍', label:'🔥 高潛力活躍戶' },
+            { key:'穩定交易',   label:'📊 穩定交易戶' },
+            { key:'流失預警',   label:'⏰ 流失預警' },
+            { key:'已流失',     label:'❄️ 已流失老客' },
+            { key:'沉睡',       label:'💤 沉睡流失' },
+            { key:'高淨值',     label:'⚠️ 沉睡高淨值戶' },
+          ]" :key="t.key" :label="t.label" :value="t.key" />
+        </el-select>
+
+        <!-- 社群互動標籤下拉多選 -->
+        <el-select
+          v-model="socialTags"
+          multiple
+          placeholder="社群互動"
+          size="default"
+          clearable
+          style="width:240px;--el-border-radius-base:3px;"
+          @change="filterMode = 'all'"
+        >
+          <el-option v-for="t in [
+            { key:'社群超高互動', label:'💬 社群超高互動' },
+            { key:'社群高互動',   label:'💬 社群高互動' },
+            { key:'社群互動中',   label:'💬 社群互動中' },
+            { key:'社群低互動',   label:'🔇 社群低互動' },
+          ]" :key="t.key" :label="t.label" :value="t.key" />
+        </el-select>
+
       </div>
     </div>
 
@@ -530,7 +606,8 @@ async function submitCreateForm() {
           </template>
         </el-table-column>
 
-        <el-table-column prop="volume_recent" label="近30天交易量(U)" width="185" sortable>
+        <el-table-column prop="volume_recent" width="210" sortable>
+          <template #header><span style="white-space:nowrap;">近30天交易量(U)</span></template>
           <template #default="{ row }">
             <span v-if="(row.volume_recent ?? row.volume_30d) !== null && (row.volume_recent ?? row.volume_30d) !== undefined" style="color:#1a1d23;">{{ Number(row.volume_recent ?? row.volume_30d).toLocaleString(undefined, { maximumFractionDigits: 2 }) }}</span>
             <span v-else class="text-sm" style="color:#dcdfe6;">--</span>
@@ -544,7 +621,7 @@ async function submitCreateForm() {
           </template>
         </el-table-column>
 
-        <el-table-column label="RFM" width="135" class-name="hidden md:table-cell">
+        <el-table-column v-if="false" label="RFM" width="135" class-name="hidden md:table-cell">
           <template #default="{ row }">
             <span v-if="row.rfm_score" class="text-sm font-mono px-1.5 py-0.5 rounded" style="background:#f5f7fa;color:#3d4148;border:1px solid #e4e7ed;">R{{ row.rfm_score.r }} F{{ row.rfm_score.f }} M{{ row.rfm_score.m }}</span>
             <span v-else class="text-sm" style="color:#dcdfe6;">--</span>
@@ -586,7 +663,7 @@ async function submitCreateForm() {
         style="border-top:1px solid #e4e7ed;">
         <span class="text-sm" style="color:#909399;">
           顯示 {{ sortedFilteredData.length }} / 共{{ crmStore.users.length }} 人·
-          VIP {{ crmStore.vipUsers.length }} · 沉睡 {{ crmStore.sleepingUsers.length }}
+          VIP {{ vipCount }} · 沉睡 {{ sleepingCount }}
         </span>
         <el-pagination
           v-model:current-page="currentPage"

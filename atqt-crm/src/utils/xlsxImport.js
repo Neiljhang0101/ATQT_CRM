@@ -32,6 +32,7 @@ const USER_INFO_MAP = {
   '淨資產': 'total_assets',
   '註冊時間': 'bingx_register_date',
   'REMARK': '_remark_raw',  // 暫存，後面轉成 note_tags
+  '進階群內': 'in_advanced_group', // 勾選（TRUE/1）則在群內
 }
 
 /** 交易量欄位 → store key (注意「交易量(USDT) 」尾端有空格) */
@@ -55,6 +56,7 @@ const LINE_NAMES_MAP = {
   'UID': 'uid',
   '您的LINE 稱呼(預計加入群組後所取的名字，請勿填寫錯誤)': 'line_name',
   '您的LINE名字(與官方帳號交談時顯示的名字)': 'line_display_name',
+  '在進階群內': 'in_advanced_group',
 }
 
 // ── 偵測函式 ─────────────────────────────────────────────────────
@@ -111,7 +113,7 @@ function parseExcelDate(val) {
  */
 function parseSheet(rows, fileType, accountType) {
   const records = []
-  const headers = rows[0].map(h => h !== null ? String(h) : '')
+  const headers = rows[0].map(h => h !== null ? String(h).trim() : '')
 
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i]
@@ -142,6 +144,19 @@ function parseSheet(rows, fileType, accountType) {
       }
       if (record.bingx_register_date !== undefined) {
         record.bingx_register_date = parseExcelDate(record.bingx_register_date)
+      }
+      // 進階群內：直接布林、數字 1、0、各種字串格式均轉為 boolean
+      if (record.in_advanced_group !== undefined) {
+        const v = record.in_advanced_group
+        const s = String(v).trim().toLowerCase()
+
+        record.in_advanced_group = (
+          v === true || v === 1 ||
+          s === 'true' || s === '1' || s === '是' || s === 'yes' || s === 'y' ||
+          s === '✓' || s === '✔' || s === '✔️' || s === '✅' || s === '勾' || s === '有'
+        )
+      } else {
+        console.log('[xlsxImport] 未找到「進階群內」欄位，現有原始欄位：', Object.keys(raw).filter(k => k).join(' | '))
       }
       records.push(record)
 
@@ -180,8 +195,15 @@ function parseSheet(rows, fileType, accountType) {
           record.uid = String(val)
         } else if (h.includes('LINE') && h.includes('稱呼')) {
           record.line_name = String(val)
-        } else if (h.includes('LINE') && h.includes('名字') && !h.includes('稱呼')) {
+        } else if (h.includes('LINE') && (h.includes('名字') || h.includes('名稱')) && !h.includes('稱呼')) {
           record.line_display_name = String(val)
+        } else if (h === '在進階群內') {
+          const s = String(val).trim().toLowerCase()
+          record.in_advanced_group = (
+            val === true || val === 1 ||
+            s === 'true' || s === '1' || s === '是' || s === 'yes' || s === 'y' ||
+            s === '✓' || s === '✔' || s === '✔️' || s === '✅' || s === '勾' || s === '有'
+          )
         }
       }
       if (!record.uid) continue

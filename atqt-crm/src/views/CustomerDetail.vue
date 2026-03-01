@@ -135,12 +135,15 @@ function tagBadgeStyle(tag) {
   if (tag.includes('高淨值'))            return 'background:rgba(230,162,60,0.10);color:#E6A23C;border:1px solid rgba(230,162,60,0.3);'
   if (tag.includes('新手待破蛋'))        return 'background:rgba(103,194,58,0.12);color:#52A135;border:1px solid rgba(103,194,58,0.4);'
   if (tag.includes('入金未交易'))        return 'background:rgba(32,178,135,0.10);color:#18A77A;border:1px solid rgba(32,178,135,0.35);'
-  if (tag.includes('初次交易'))          return 'background:rgba(144,97,219,0.11);color:#7C4DCC;border:1px solid rgba(144,97,219,0.35);'
   if (tag.includes('高潛力活躍'))        return 'background:rgba(245,108,108,0.10);color:#D94F4F;border:1px solid rgba(245,108,108,0.32);'
   if (tag.includes('穩定交易'))          return 'background:#ecf5ff;color:#409EFF;border:1px solid rgba(64,158,255,0.35);'
   if (tag.includes('流失預警'))          return 'background:rgba(230,100,0,0.10);color:#C05800;border:1px solid rgba(230,100,0,0.32);'
   if (tag.includes('沉睡') || tag.includes('沈睡')) return 'background:rgba(245,108,108,0.12);color:#F56C6C;border:1px solid rgba(245,108,108,0.3);'
   if (tag.includes('已流失'))            return 'background:rgba(144,158,171,0.13);color:#607D8B;border:1px solid rgba(144,158,171,0.35);'
+  if (tag.includes('社群超高互動'))       return 'background:rgba(0,196,180,0.13);color:#008C80;border:1px solid rgba(0,196,180,0.4);'
+  if (tag.includes('社群高互動'))         return 'background:rgba(32,178,135,0.11);color:#18A77A;border:1px solid rgba(32,178,135,0.38);'
+  if (tag.includes('社群互動中'))         return 'background:rgba(64,158,255,0.10);color:#337ECC;border:1px solid rgba(64,158,255,0.32);'
+  if (tag.includes('社群低互動'))         return 'background:rgba(144,158,171,0.09);color:#8C9BAA;border:1px solid rgba(144,158,171,0.28);'
   return 'background:#f5f7fa;color:#606266;border:1px solid #e4e7ed;'
 }
 </script>
@@ -377,6 +380,21 @@ function tagBadgeStyle(tag) {
                 </div>
                 <div><div class="text-sm mb-1" style="color:#606266;">指標版本</div><div class="font-medium" style="color:#303133;">{{ user.indicator_version || '--' }}</div></div>
                 <div>
+                  <div class="text-sm mb-1" style="color:#606266;">進階群內</div>
+                  <div class="flex items-center gap-1.5">
+                    <span v-if="user.in_advanced_group"
+                      class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-sm font-medium"
+                      style="background:rgba(103,194,58,0.12);color:#52A135;border:1px solid rgba(103,194,58,0.35);">
+                      <span class="material-symbols-outlined text-[14px]">check_circle</span>在群內
+                    </span>
+                    <span v-else
+                      class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-sm font-medium"
+                      style="background:#f5f7fa;color:#909399;border:1px solid #e4e7ed;">
+                      <span class="material-symbols-outlined text-[14px]">cancel</span>未入群
+                    </span>
+                  </div>
+                </div>
+                <div>
                   <div class="text-sm mb-1" style="color:#606266;">
                     社群互動<span v-if="lineStats && lineStats.dateRange !== '--'">({{ lineStats.dateRange }})</span>
                   </div>
@@ -425,6 +443,12 @@ function tagBadgeStyle(tag) {
               <div class="grid grid-cols-2 gap-4">
                 <div><label class="block text-sm mb-1" style="color:#606266;">RFM 受眾標籤</label><el-input v-model="editForm.rfm_score_tag" size="large" /></div>
                 <div><label class="block text-sm mb-1" style="color:#606266;">指標版本</label><el-input v-model="editForm.indicator_version" size="large" /></div>
+                <div class="flex items-center gap-3 col-span-2">
+                  <label class="text-sm" style="color:#606266;">進階群內</label>
+                  <el-switch v-model="editForm.in_advanced_group"
+                    active-text="在群內" inactive-text="未入群"
+                    active-color="#52A135" inactive-color="#e4e7ed" />
+                </div>
                 <div>
                   <label class="block text-sm mb-1" style="color:#606266;">
                     社群互動<span v-if="lineStats && lineStats.dateRange !== '--'">({{ lineStats.dateRange }})</span>

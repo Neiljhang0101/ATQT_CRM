@@ -23,6 +23,7 @@
 * 新增 `getAgencyCommission()` 與 `getUserAssets()` API 函數 (請使用 `/api/bingx` proxy)。
 * 在 Store 中撰寫資料合併邏輯：將 API 抓到的 `balance` 與 `volume` 更新到對應 UID 的客戶資料上。
 * 實作 RFM 動態標籤運算：若 `balance > 5000` 加上「高淨值」標籤；若距最後交易日 > 7 天加上「流失風險」標籤等。
+* **社群互動頻率標籤（受眾標籤）：** 依 `line_msg_count_7d`（每週 LINE 訊息數）自動標記：≥ 100 → 💬 社群超高互動；≥ 50 → 💬 社群高互動；≥ 10 → 💬 社群互動中；< 10 → 🔇 社群低互動。四者互斥，可與其他標籤共存，用於社群再觸及（Reactivation）與 KOC 受眾選取。詳見 `docs/step3_RFM.md § 4.4`。
 
 ## 4. 升級前端介面 (`src/views/CrmTable.vue`)
 * **手動新增表單：** 在表格頂部加入「+ 新增客戶資料」的 `<el-button>`。點擊後彈出 `<el-dialog>` 與 `<el-form>`。表單需包含：官網註冊信箱、LINE ID、LINE 暱稱、聯絡方式、BingX UID。填寫送出後呼叫 Store 的手動建檔 Action。

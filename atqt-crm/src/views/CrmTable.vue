@@ -10,8 +10,24 @@ import { parseLineChatXlsx } from '../utils/lineImport.js'
 const crmStore = useCrmStore()
 const router = useRouter()
 
+const syncingInvitees  = ref(false)
+const syncingCommission = ref(false)
+const syncingAssets    = ref(false)
+
+const anySyncing = computed(() =>
+  crmStore.loading || syncingInvitees.value || syncingCommission.value || syncingAssets.value
+)
+
+function handleSyncCommand(cmd) {
+  if (cmd === 'all')        syncInvitees()
+  else if (cmd === 'invitees')   syncOnlyInvitees()
+  else if (cmd === 'commission') syncOnlyCommission()
+  else if (cmd === 'assets')     syncOnlyAssets()
+}
+
 const filterMode   = ref('all')
 const sourceFilter = ref('all')
+const tagFilter    = ref('')
 const searchUid    = ref('')
 const currentPage  = ref(1)
 const pageSize     = ref(50)
@@ -32,6 +48,7 @@ const filteredData = computed(() => {
   if (filterMode.value === 'vip') data = crmStore.vipUsers
   else if (filterMode.value === 'sleeping') data = crmStore.sleepingUsers
   if (sourceFilter.value !== 'all') data = data.filter(u => (u.source || u.account_type) === sourceFilter.value)
+  if (tagFilter.value) data = data.filter(u => Array.isArray(u.tags) && u.tags.some(t => t.includes(tagFilter.value)))
   if (searchUid.value.trim()) {
     data = data.filter(u =>
       String(u.uid).includes(searchUid.value.trim()) ||
@@ -106,6 +123,66 @@ onMounted(() => {
   if (crmStore.users.length === 0) ElMessage.info('請點右上符按鈕同步 API 或匯入 XLSX 資料')
 })
 
+// ── 三支獨立同步 ───────────────────────────────────────────────────
+async function syncOnlyInvitees() {
+  syncingInvitees.value = true
+  try {
+    const [o, n] = await Promise.allSettled([
+      crmStore.fetchInviteesOnly(oldApi, 'old'),
+      crmStore.fetchInviteesOnly(newApi, 'new'),
+    ])
+    const msgs = []
+    if (o.status === 'fulfilled') msgs.push('舊：' + o.value + ' 筆')
+    else { msgs.push('舊失敗：' + o.reason?.message); console.error(o.reason) }
+    if (n.status === 'fulfilled') msgs.push('新：' + n.value + ' 筆')
+    else { msgs.push('新失敗：' + n.reason?.message); console.error(n.reason) }
+    ElMessage.success('下線名單同步完成 ' + msgs.join('、'))
+  } finally {
+    syncingInvitees.value = false
+  }
+}
+
+async function syncOnlyCommission() {
+  syncingCommission.value = true
+  try {
+    // 診斷：確認 Vite 有正確讀到 API 金鑰
+    const newKeyPrefix = import.meta.env.VITE_BINGX_NEW_API_KEY?.slice(0, 8) || '(empty!)'
+    const oldKeyPrefix = import.meta.env.VITE_BINGX_OLD_API_KEY?.slice(0, 8) || '(empty!)'
+    console.log('[syncCommission] OLD key:', oldKeyPrefix, '| NEW key:', newKeyPrefix)
+    ElMessage({ message: `金鑰確認 OLD:${oldKeyPrefix} NEW:${newKeyPrefix}`, type: 'info', duration: 6000 })
+    const [o, n] = await Promise.allSettled([
+      crmStore.fetchCommissionOnly(oldApi, 'old'),
+      crmStore.fetchCommissionOnly(newApi, 'new'),
+    ])
+    const msgs = []
+    if (o.status === 'fulfilled') msgs.push('舊：' + o.value + ' 筆')
+    else { msgs.push('舊失敗：' + o.reason?.message); console.error(o.reason) }
+    if (n.status === 'fulfilled') msgs.push('新：' + n.value + ' 筆')
+    else { msgs.push('新失敗：' + n.reason?.message); console.error(n.reason) }
+    ElMessage.success('傭金明細同步完成 ' + msgs.join('、'))
+  } finally {
+    syncingCommission.value = false
+  }
+}
+
+async function syncOnlyAssets() {
+  syncingAssets.value = true
+  try {
+    const [o, n] = await Promise.allSettled([
+      crmStore.fetchAssetsOnly(oldApi, 'old'),
+      crmStore.fetchAssetsOnly(newApi, 'new'),
+    ])
+    const msgs = []
+    if (o.status === 'fulfilled') msgs.push('舊：' + o.value + ' 筆')
+    else { msgs.push('舊失敗：' + o.reason?.message); console.error(o.reason) }
+    if (n.status === 'fulfilled') msgs.push('新：' + n.value + ' 筆')
+    else { msgs.push('新失敗：' + n.reason?.message); console.error(n.reason) }
+    ElMessage.success('帳戶資產同步完成 ' + msgs.join('、'))
+  } finally {
+    syncingAssets.value = false
+  }
+}
+
 function copyUid(uid) {
   navigator.clipboard.writeText(String(uid)).then(() => {
     ElMessage.success('已複製 UID：' + uid)
@@ -115,14 +192,25 @@ function copyUid(uid) {
 }
 
 function tagStyle(tag) {
-  if (tag.includes('VIP') || tag.includes('高淨值'))
-    return { bg: 'rgba(230,162,60,0.12)', color: '#E6A23C', border: 'rgba(230,162,60,0.3)' }
-  if (tag.includes('流失') || tag.includes('風險'))
-    return { bg: 'rgba(245,108,108,0.12)', color: '#F56C6C', border: 'rgba(245,108,108,0.3)' }
-  return { bg: '#ecf5ff', color: '#409EFF', border: 'rgba(64,158,255,0.3)' }
+  if (tag.includes('核心 VIP'))         return { bg: 'rgba(230,162,60,0.13)', color: '#B7860B', border: 'rgba(230,162,60,0.4)' }
+  if (tag.includes('高淨值'))            return { bg: 'rgba(230,162,60,0.10)', color: '#E6A23C', border: 'rgba(230,162,60,0.3)' }
+  if (tag.includes('新手待破蛋'))        return { bg: 'rgba(103,194,58,0.12)',  color: '#52A135', border: 'rgba(103,194,58,0.4)' }
+  if (tag.includes('入金未交易'))        return { bg: 'rgba(32,178,135,0.10)',  color: '#18A77A', border: 'rgba(32,178,135,0.35)' }
+  if (tag.includes('初次交易'))          return { bg: 'rgba(144,97,219,0.11)',  color: '#7C4DCC', border: 'rgba(144,97,219,0.35)' }
+  if (tag.includes('高潛力活躍'))        return { bg: 'rgba(245,108,108,0.10)', color: '#D94F4F', border: 'rgba(245,108,108,0.32)' }
+  if (tag.includes('穩定交易'))          return { bg: '#ecf5ff',                color: '#409EFF', border: 'rgba(64,158,255,0.35)' }
+  if (tag.includes('流失預警'))          return { bg: 'rgba(230,100,0,0.10)',   color: '#C05800', border: 'rgba(230,100,0,0.32)' }
+  if (tag.includes('沉睡') || tag.includes('沈睡')) return { bg: 'rgba(245,108,108,0.12)', color: '#F56C6C', border: 'rgba(245,108,108,0.3)' }
+  if (tag.includes('已流失'))            return { bg: 'rgba(144,158,171,0.13)', color: '#607D8B', border: 'rgba(144,158,171,0.35)' }
+  return { bg: '#f5f7fa', color: '#606266', border: '#e4e7ed' }
 }
 
-// ?? ??詳? ??????????????????????????????????????????????
+function recalcRfm() {
+  crmStore.recalcRfm()
+  ElMessage.success(`RFM 標籤已重算，共 ${crmStore.users.length} 位`)
+}
+
+// 查看詳情
 function viewDetail(row) {
   router.push('/crm/' + row.uid)
 }
@@ -239,6 +327,16 @@ async function submitCreateForm() {
       <div class="flex items-center gap-2 flex-wrap">
         <p v-if="crmStore.lastSyncTime" class="text-sm hidden sm:block" style="color:#909399;">最後同步：{{ crmStore.lastSyncTime }}</p>
 
+        <!-- 重算 RFM -->
+        <button
+          class="flex items-center gap-1.5 px-4 py-2 rounded text-sm font-medium transition-colors shadow-sm"
+          style="background:#f0f0ff;color:#7C4DCC;border:1px solid rgba(124,77,204,0.3);"
+          @click="recalcRfm"
+        >
+          <span class="material-symbols-outlined text-[18px]">refresh</span>
+          重算 RFM
+        </button>
+
         <!-- 手動建立資料 -->
         <button
           class="flex items-center gap-1.5 px-4 py-2 rounded text-sm font-medium transition-colors shadow-sm"
@@ -289,15 +387,42 @@ async function submitCreateForm() {
           </template>
         </el-upload>
 
-        <!-- 同步 API -->
-        <button
-          class="flex items-center gap-1.5 px-4 py-2 rounded text-sm font-medium text-white transition-colors shadow-sm"
-          :disabled="crmStore.loading"
-          @click="syncInvitees"
+        <!-- 同步下拉選單 -->
+        <el-dropdown
+          trigger="click"
+          :disabled="anySyncing"
+          @command="handleSyncCommand"
         >
-          <span class="material-symbols-outlined text-[18px]" :class="crmStore.loading ? 'animate-spin' : ''">sync</span>
-          {{ crmStore.loading ? '同步API...' : '同步兩個帳號' }}
-        </button>
+          <button
+            class="flex items-center gap-1.5 px-4 py-2 rounded text-sm font-medium text-white transition-colors shadow-sm"
+            :style="anySyncing ? 'background:#aaa;cursor:not-allowed;' : 'background:#606266;'"
+            :disabled="anySyncing"
+          >
+            <span class="material-symbols-outlined text-[18px]" :class="anySyncing ? 'animate-spin' : ''">sync</span>
+            {{ anySyncing ? '同步中...' : '同步資料' }}
+            <span class="material-symbols-outlined text-[16px]">arrow_drop_down</span>
+          </button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item command="all">
+                <span class="material-symbols-outlined text-[16px] mr-1" style="vertical-align:middle;color:#606266;">sync</span>
+                全部同步
+              </el-dropdown-item>
+              <el-dropdown-item divided command="invitees">
+                <span class="material-symbols-outlined text-[16px] mr-1" style="vertical-align:middle;color:#409EFF;">group</span>
+                下線名單
+              </el-dropdown-item>
+              <el-dropdown-item command="commission">
+                <span class="material-symbols-outlined text-[16px] mr-1" style="vertical-align:middle;color:#E6A23C;">bar_chart</span>
+                傭金明細
+              </el-dropdown-item>
+              <el-dropdown-item command="assets">
+                <span class="material-symbols-outlined text-[16px] mr-1" style="vertical-align:middle;color:#67C23A;">account_balance_wallet</span>
+                帳戶餘額
+              </el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
       </div>
     </div>
 
@@ -323,18 +448,40 @@ async function submitCreateForm() {
               @click="sourceFilter = s[0]">{{ s[1] }}</button>
           </div>
         </div>
-        <div>
+        <div class="w-full">
           <label class="block text-sm font-medium mb-1.5" style="color:#909399;">受眾篩選</label>
           <div class="flex gap-1.5 flex-wrap">
             <button class="px-3 py-1.5 text-sm rounded transition-colors"
               :style="filterMode === 'all' ? 'background:#409EFF;color:#fff;font-weight:500;' : 'background:#f5f7fa;color:#3d4148;border:1px solid #e4e7ed;'"
-              @click="filterMode = 'all'">全部 ({{ crmStore.users.length }})</button>
+              @click="filterMode = 'all'; tagFilter = ''">全部 ({{ crmStore.users.length }})</button>
             <button class="px-3 py-1.5 text-sm rounded transition-colors"
               :style="filterMode === 'vip' ? 'background:#E6A23C;color:#fff;font-weight:500;' : 'background:rgba(230,162,60,0.08);color:#E6A23C;border:1px solid rgba(230,162,60,0.3);'"
-              @click="filterMode = 'vip'">高淨値({{ crmStore.vipUsers.length }})</button>
+              @click="filterMode = 'vip'; tagFilter = ''">高淨值 ({{ crmStore.vipUsers.length }})</button>
             <button class="px-3 py-1.5 text-sm rounded transition-colors"
               :style="filterMode === 'sleeping' ? 'background:#F56C6C;color:#fff;font-weight:500;' : 'background:rgba(245,108,108,0.08);color:#F56C6C;border:1px solid rgba(245,108,108,0.3);'"
-              @click="filterMode = 'sleeping'">潛在 流失風險 ({{ crmStore.sleepingUsers.length }})</button>
+              @click="filterMode = 'sleeping'; tagFilter = ''">潛在流失風險 ({{ crmStore.sleepingUsers.length }})</button>
+          </div>
+          <!-- 分眾標籤快篩 -->
+          <div class="flex flex-wrap gap-1.5 mt-2">
+            <span class="text-xs mt-0.5 mr-0.5" style="color:#909399;">標籤：</span>
+            <button v-for="[key, label, ts] in [
+              ['核心 VIP',   '👑 核心 VIP',   { bg:'rgba(230,162,60,0.13)', color:'#B7860B', border:'rgba(230,162,60,0.4)'}],
+              ['新手待破蛋', '🌟 新手待破蛋', { bg:'rgba(103,194,58,0.12)', color:'#52A135', border:'rgba(103,194,58,0.4)'}],
+              ['入金未交易', '🌱 入金未交易', { bg:'rgba(32,178,135,0.10)', color:'#18A77A', border:'rgba(32,178,135,0.35)'}],
+              ['初次交易',   '🚀 初次交易',   { bg:'rgba(144,97,219,0.11)', color:'#7C4DCC', border:'rgba(144,97,219,0.35)'}],
+              ['高潛力活躍', '🔥 高潛力活躍戶',{ bg:'rgba(245,108,108,0.10)', color:'#D94F4F', border:'rgba(245,108,108,0.32)'}],
+              ['穩定交易',   '📊 穩定交易戶', { bg:'#ecf5ff', color:'#409EFF', border:'rgba(64,158,255,0.35)'}],
+              ['流失預警',   '⏰ 流失預警',   { bg:'rgba(230,100,0,0.10)', color:'#C05800', border:'rgba(230,100,0,0.32)'}],
+              ['已流失',     '❄️ 已流失老客',  { bg:'rgba(144,158,171,0.13)', color:'#607D8B', border:'rgba(144,158,171,0.35)'}],
+              ['沉睡',       '💤 沉睡流失',    { bg:'rgba(245,108,108,0.12)', color:'#F56C6C', border:'rgba(245,108,108,0.3)'}],
+              ['高淨值',     '⚠️ 沉睡高淨值',  { bg:'rgba(230,162,60,0.10)', color:'#E6A23C', border:'rgba(230,162,60,0.3)'}],
+            ]" :key="key"
+              class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium cursor-pointer transition-all"
+              :style="tagFilter === key
+                ? `background:${ts.color};color:#fff;border:1px solid ${ts.border};`
+                : `background:${ts.bg};color:${ts.color};border:1px solid ${ts.border};opacity:0.85;`"
+              @click="tagFilter = tagFilter === key ? '' : key; filterMode = 'all'"
+            >{{ label }}</button>
           </div>
         </div>
       </div>
@@ -383,7 +530,7 @@ async function submitCreateForm() {
           </template>
         </el-table-column>
 
-        <el-table-column prop="volume_recent" label="近期交易量(U)" width="185" sortable>
+        <el-table-column prop="volume_recent" label="近30天交易量(U)" width="185" sortable>
           <template #default="{ row }">
             <span v-if="(row.volume_recent ?? row.volume_30d) !== null && (row.volume_recent ?? row.volume_30d) !== undefined" style="color:#1a1d23;">{{ Number(row.volume_recent ?? row.volume_30d).toLocaleString(undefined, { maximumFractionDigits: 2 }) }}</span>
             <span v-else class="text-sm" style="color:#dcdfe6;">--</span>

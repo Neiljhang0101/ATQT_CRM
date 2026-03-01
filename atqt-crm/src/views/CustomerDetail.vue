@@ -67,6 +67,16 @@ function accountTypeLabel(v) {
   return v ?? '--'
 }
 
+// 邀請人 LINE 暱稱：優先用手填欄位，否則從資料庫查找邀請人 UID
+const inviterLineName = computed(() => {
+  if (!user.value) return null
+  if (user.value.inviter_line_name) return user.value.inviter_line_name
+  const inviterUid = String(user.value.inviter_uid_code || '').trim()
+  if (!inviterUid) return null
+  const inviter = crmStore.users.find(u => String(u.uid) === inviterUid)
+  return inviter?.line_name || null
+})
+
 function formatNumber(n) {
   if (n === null || n === undefined) return '--'
   return Number(n).toLocaleString(undefined, { maximumFractionDigits: 2 })
@@ -119,6 +129,20 @@ const lineStats = computed(() => {
   }
   return { latestWeek, dateRange, latestCount, prevCount, prevWeek, changePct, changeDir, total }
 })
+
+function tagBadgeStyle(tag) {
+  if (tag.includes('核心 VIP'))         return 'background:rgba(230,162,60,0.13);color:#B7860B;border:1px solid rgba(230,162,60,0.4);'
+  if (tag.includes('高淨值'))            return 'background:rgba(230,162,60,0.10);color:#E6A23C;border:1px solid rgba(230,162,60,0.3);'
+  if (tag.includes('新手待破蛋'))        return 'background:rgba(103,194,58,0.12);color:#52A135;border:1px solid rgba(103,194,58,0.4);'
+  if (tag.includes('入金未交易'))        return 'background:rgba(32,178,135,0.10);color:#18A77A;border:1px solid rgba(32,178,135,0.35);'
+  if (tag.includes('初次交易'))          return 'background:rgba(144,97,219,0.11);color:#7C4DCC;border:1px solid rgba(144,97,219,0.35);'
+  if (tag.includes('高潛力活躍'))        return 'background:rgba(245,108,108,0.10);color:#D94F4F;border:1px solid rgba(245,108,108,0.32);'
+  if (tag.includes('穩定交易'))          return 'background:#ecf5ff;color:#409EFF;border:1px solid rgba(64,158,255,0.35);'
+  if (tag.includes('流失預警'))          return 'background:rgba(230,100,0,0.10);color:#C05800;border:1px solid rgba(230,100,0,0.32);'
+  if (tag.includes('沉睡') || tag.includes('沈睡')) return 'background:rgba(245,108,108,0.12);color:#F56C6C;border:1px solid rgba(245,108,108,0.3);'
+  if (tag.includes('已流失'))            return 'background:rgba(144,158,171,0.13);color:#607D8B;border:1px solid rgba(144,158,171,0.35);'
+  return 'background:#f5f7fa;color:#606266;border:1px solid #e4e7ed;'
+}
 </script>
 
 <template>
@@ -236,9 +260,9 @@ const lineStats = computed(() => {
                 <div><div class="text-sm mb-1" style="color:#606266;">邀請人 UID</div><div class="font-mono font-medium cursor-pointer transition-colors hover:text-[#409EFF]" style="color:#303133;">{{ user.inviter_uid_code || '--' }}</div></div>
                 <div><div class="text-sm mb-1" style="color:#606266;">已綁定邀請碼</div><div class="font-mono font-medium" style="color:#303133;">{{ user.bound_invite_code || '--' }}</div></div>
                 <div><div class="text-sm mb-1" style="color:#606266;">他的推廣邀請碼</div><div class="font-mono font-medium" style="color:#303133;">{{ user.own_promo_code || '--' }}</div></div>
-                <div><div class="text-sm mb-1" style="color:#606266;">邀請人 LINE 暱稱</div><div class="font-medium" style="color:#303133;">{{ user.inviter_line_name || '--' }}</div></div>
+                <div><div class="text-sm mb-1" style="color:#606266;">邀請人 LINE 暱稱</div><div class="font-medium" style="color:#303133;">{{ inviterLineName || '--' }}<span v-if="!user.inviter_line_name && inviterLineName" class="text-xs ml-1" style="color:#909399;">（從資料庫）</span></div></div>
                 <div><div class="text-sm mb-1" style="color:#606266;">LINE 暱稱</div><div class="font-medium" style="color:#303133;">{{ user.line_name || '--' }}</div></div>
-                <div><div class="text-sm mb-1" style="color:#606266;">LINE 名稱（官方交談顯示）</div><div class="font-medium" style="color:#303133;">{{ user.line_display_name || '--' }}</div></div>
+                <div><div class="text-sm mb-1" style="color:#606266;">LINE 名稱（官方交談顯示）</div><div class="font-medium" style="color:#303133;">{{ user.line_display_name || user.line_name || '--' }}<span v-if="!user.line_display_name && user.line_name" class="text-xs ml-1" style="color:#909399;">（同暱稱）</span></div></div>
                 <div><div class="text-sm mb-1" style="color:#606266;">官網信箱</div><div class="font-medium" style="color:#303133;word-break:break-all;">{{ user.official_email || '--' }}</div></div>
                 <div><div class="text-sm mb-1" style="color:#606266;">TradingView 帳號</div><div class="font-medium" style="color:#303133;">{{ user.tradingview_account || '--' }}</div></div>
                 <div><div class="text-sm mb-1" style="color:#606266;">BingX 註冊日期</div><div class="font-medium" style="color:#303133;">{{ user.bingx_register_date || user.register_date || '--' }}</div></div>
@@ -281,7 +305,7 @@ const lineStats = computed(() => {
             <template v-if="!editing">
               <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-y-5 gap-x-8">
                 <div>
-                  <div class="text-sm mb-1" style="color:#606266;">近期交易量(U)</div>
+                  <div class="text-sm mb-1" style="color:#606266;">近30天交易量(U)</div>
                   <div class="text-lg font-semibold" style="color:#1a1d23;">{{ formatNumber(user.volume_recent ?? user.volume_30d) }}</div>
                 </div>
                 <div>
@@ -305,11 +329,20 @@ const lineStats = computed(() => {
                   <div class="text-sm mb-1" style="color:#606266;">最後交易日</div>
                   <div class="font-medium" style="color:#303133;">{{ user.last_trade_date || '--' }}</div>
                 </div>
+                <div>
+                  <div class="text-sm mb-1" style="color:#606266;">近30天有交易天數</div>
+                  <div class="flex items-center gap-1">
+                    <span class="text-lg font-semibold" :style="(user.trade_count_30d ?? 0) >= 10 ? 'color:#67C23A;' : (user.trade_count_30d ?? 0) >= 3 ? 'color:#409EFF;' : 'color:#909399;'">
+                      {{ user.trade_count_30d ?? 0 }}
+                    </span>
+                    <span class="text-sm" style="color:#909399;">天</span>
+                  </div>
+                </div>
               </div>
             </template>
             <template v-else>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div><label class="block text-sm mb-1" style="color:#606266;">近期交易量(U)</label><el-input-number v-model="editForm.volume_recent" :precision="2" :step="1000" style="width:100%" size="large" /></div>
+                <div><label class="block text-sm mb-1" style="color:#606266;">近30天交易量(U)</label><el-input-number v-model="editForm.volume_recent" :precision="2" :step="1000" style="width:100%" size="large" /></div>
                 <div><label class="block text-sm mb-1" style="color:#606266;">總資產(U)</label><el-input-number v-model="editForm.total_assets" :precision="2" :step="100" style="width:100%" size="large" /></div>
                 <div><label class="block text-sm mb-1" style="color:#606266;">BingX VIP 等級</label><el-input v-model="editForm.bingx_vip_level" placeholder="例：0 / Lv1" size="large" /></div>
                 <div><label class="block text-sm mb-1" style="color:#606266;">首次入金日</label><el-input v-model="editForm.first_deposit_time" placeholder="YYYY-MM-DD" size="large" /></div>
@@ -364,7 +397,17 @@ const lineStats = computed(() => {
                     {{ lineStats ? lineStats.total.toLocaleString() + ' 則' : '--' }}
                   </div>
                 </div>
-                <div><div class="text-sm mb-1" style="color:#606266;">RFM 受眾標籤</div><div class="font-medium" style="color:#303133;">{{ user.rfm_score_tag || '--' }}</div></div>
+                <div class="col-span-2">
+                  <div class="text-sm mb-2" style="color:#606266;">受眾標籤</div>
+                  <div class="flex flex-wrap gap-1.5">
+                    <template v-if="user.tags && user.tags.length">
+                      <span v-for="tag in user.tags" :key="tag"
+                        class="inline-flex items-center px-2.5 py-0.5 rounded text-sm font-medium"
+                        :style="tagBadgeStyle(tag)">{{ tag }}</span>
+                    </template>
+                    <span v-else class="text-sm" style="color:#dcdfe6;">一般用戶</span>
+                  </div>
+                </div>
                 <div class="col-span-2">
                   <div class="text-sm mb-2" style="color:#606266;">備註標籤</div>
                   <div class="flex flex-wrap gap-2">

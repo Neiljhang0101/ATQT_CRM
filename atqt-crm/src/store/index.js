@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { getAgencyInvitees, getCommissionRecords, getSubAccountAssets } from '../api/bingx.js'
+import { getAgencyInvitees, getSubAccountAssets, commissionFetch, OLD_API_KEY, OLD_SECRET_KEY, NEW_API_KEY, NEW_SECRET_KEY } from '../api/bingx.js'
 
 /**
  * 客戶資料預設結構 (20 欄位)
@@ -31,6 +31,7 @@ export function createDefaultUser(overrides = {}) {
     community_interaction: null, // 18. 社群互動度
     bingx_vip_level: null,     // 19. BingX VIP 等級
     first_deposit_time: null,  // 20. 首次入金時間
+    last_active_date: null,    // 21. 虛擬最後活躍日 YYYY-MM-DD（SDD Spec: 每週匯入心跳更新機制）
     // ── 以下為 API 同步欄位（非 XLSX 匯入範疇） ──
     source: null,
     balance: null,
@@ -67,25 +68,53 @@ export const useCrmStore = defineStore('crm', () => {
     users.value.filter(u => u.balance > 5000)
   )
 
-  /** 沉睡戶：超過 7 天未交易 */
+  /** 沉睡戶：last_active_date 超過 30 天（或從未有活躍紀錄），且非新手保護期內
+   * SDD Spec: 每週匯入心跳更新機制 */
   const sleepingUsers = computed(() => {
     const now = Date.now()
+    const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000
     const sevenDaysMs = 7 * 24 * 60 * 60 * 1000
     return users.value.filter(u => {
-      if (!u.last_trade_date) return true
-      return now - new Date(u.last_trade_date).getTime() > sevenDaysMs
+      // 新手保護期（7 天內）不算沉睡
+      const regDate = u.register_date || u.bingx_register_date
+      const fdDate = u.first_deposit_time
+      const refDate = regDate || fdDate
+      if (refDate && now - new Date(refDate).getTime() <= sevenDaysMs) return false
+      // 優先用 last_active_date，退而使用 last_trade_date
+      const activeDate = u.last_active_date || u.last_trade_date
+      if (!activeDate) return true
+      return now - new Date(activeDate).getTime() > thirtyDaysMs
     })
   })
 
-  /** 計算 RFM R 分數 (1-5) */
-  function calcRScore(lastTradeDate) {
-    if (!lastTradeDate) return 1
-    const daysDiff = (Date.now() - new Date(lastTradeDate).getTime()) / (1000 * 60 * 60 * 24)
-    if (daysDiff <= 3) return 5
-    if (daysDiff <= 7) return 4
-    if (daysDiff <= 14) return 3
-    if (daysDiff <= 30) return 2
-    return 1
+  /**
+   * 計算 RFM R 分數 (1-5) ── SDD Spec: 每週匯入心跳更新機制
+   * @param {Object} u  完整 user 物件
+   * @returns {{ r: number, rfm_tag: string|null }}
+   */
+  function calcRScore(u) {
+    const now = Date.now()
+    const dayMs = 1000 * 60 * 60 * 24
+
+    // 第一優先：新手保護期（register_date 或 first_deposit_time 距今 <= 7 天）
+    const regDate = u.register_date || u.bingx_register_date
+    const fdDate = u.first_deposit_time
+    const refDate = regDate || fdDate
+    if (refDate) {
+      const regDays = (now - new Date(refDate).getTime()) / dayMs
+      if (regDays <= 7) return { r: 5, rfm_tag: '🌟 新手待破蛋' }
+    }
+
+    // 第二優先：依賴虛擬活躍日（last_active_date），退而使用 last_trade_date
+    const activeDate = u.last_active_date || u.last_trade_date
+    if (!activeDate) return { r: 1, rfm_tag: '💤 沉睡流失風險' }
+
+    const days = (now - new Date(activeDate).getTime()) / dayMs
+    if (days <= 7)  return { r: 5, rfm_tag: null }
+    if (days <= 14) return { r: 4, rfm_tag: null }
+    if (days <= 30) return { r: 3, rfm_tag: null }
+    if (days <= 60) return { r: 2, rfm_tag: null }
+    return { r: 1, rfm_tag: '💤 沉睡流失風險' }
   }
 
   /** 計算 RFM M 分數 (1-5) */
@@ -107,27 +136,61 @@ export const useCrmStore = defineStore('crm', () => {
     return 1
   }
 
+  /**
+   * 根據 R/F/M 分數與用戶狀態產生分眾標籤陣列
+   * SDD Traceability: step3_RFM.md § 動態標籤
+   */
+  function calcTags(u, r, f, m, rfm_tag) {
+    const tags = []
+    // R-based 基礎標籤（曾交易過的用更精確標籤替換"流失風险"）
+    if (rfm_tag) {
+      if (rfm_tag === '💤 沈睡流失風险' && u.has_traded) {
+        tags.push('❄️ 已流失老客')
+      } else {
+        tags.push(rfm_tag)
+      }
+    }
+    // 複合標籤（高資產）
+    if (m === 5 && (r >= 4 || f >= 4)) tags.push('👑 核心 VIP')
+    if (m === 5 && r <= 2)             tags.push('⚠️ 沈睡的高淨値戶')
+    // 中層資產活躍戶
+    if ((m === 3 || m === 4) && r >= 4) tags.push('🔥 高潛力活躍戶')
+    if ((m === 3 || m === 4) && r === 3) tags.push('📊 穩定交易戶')
+    // 預警類
+    if (m >= 3 && r === 2)               tags.push('⏰ 流失預警')
+    // 行為狀態类
+    if (u.has_deposit && !u.has_traded)  tags.push('🌱 入金未交易')
+    // 初次交易：近期活躍(R≥4)、剛開始交易(近30天交易天數≤2)、且非新手保護期標籤
+    if (r >= 4 && u.has_traded && (u.trade_count_30d || 0) <= 2 && rfm_tag !== '🌟 新手待破蛋') tags.push('🚀 初次交易')
+    return tags
+  }
+
   // ── Actions ───────────────────────────────────
 
-  /** 合併 API 資料至 users store */
+  /** 合併 API 資料至 users store（空值不覆蓋既有非空值） */
   function mergeUsers(newData) {
     newData.forEach(incoming => {
       const idx = users.value.findIndex(u => u.uid === incoming.uid)
       if (idx > -1) {
-        users.value[idx] = { ...users.value[idx], ...incoming }
+        const current = users.value[idx]
+        const merged = { ...current }
+        for (const [key, val] of Object.entries(incoming)) {
+          // null/undefined 不覆蓋既有非空值（保留歷史 last_trade_date 等欄位）
+          if (val !== null && val !== undefined) {
+            merged[key] = val
+          }
+        }
+        users.value[idx] = merged
       } else {
         users.value.push(incoming)
       }
     })
     // 重算 RFM
     users.value = users.value.map(u => {
-      const r = calcRScore(u.last_trade_date)
+      const { r, rfm_tag } = calcRScore(u)
       const f = calcFScore(u.line_msg_count_7d, u.trade_count_30d)
       const m = calcMScore(u.balance, u.volume_recent ?? u.volume_30d)
-      const tags = []
-      if (m === 5 && r <= 2) tags.push('⚠️ 沉睡的高淨值戶')
-      if (m === 5 && (r >= 4 || f >= 4)) tags.push('👑 核心 VIP')
-      return { ...u, rfm_score: { r, f, m }, tags }
+      return { ...u, rfm_score: { r, f, m }, tags: calcTags(u, r, f, m, rfm_tag) }
     })
     lastSyncTime.value = new Date().toLocaleString('zh-TW')
   }
@@ -137,12 +200,57 @@ export const useCrmStore = defineStore('crm', () => {
   }
 
   /**
+   * 分段查詢近 30 天傭金明細（每段最大 7 天，共 5 段，每頁 100 筆）
+   * 避免單次請求過多觸發 rate limit，每頁間加入 120ms 間隔
+   * @param {import('axios').AxiosInstance} apiInstance
+   * @returns {Promise<Array>}
+   */
+  async function fetchAllCommissionPages(apiInstance, sourceLabel) {
+    const apiKey    = sourceLabel === 'new' ? NEW_API_KEY    : OLD_API_KEY
+    const secretKey = sourceLabel === 'new' ? NEW_SECRET_KEY : OLD_SECRET_KEY
+    const PAGE_SIZE = 100
+    const WINDOW_MS = 7 * 24 * 60 * 60 * 1000
+    const TOTAL_WINDOWS = 5
+    const DELAY_MS = 120
+    const allItems = []
+    const seen = new Set()
+    const sleep = ms => new Promise(r => setTimeout(r, ms))
+
+    for (let w = 0; w < TOTAL_WINDOWS; w++) {
+      const endTime = Date.now() - w * WINDOW_MS
+      const startTime = endTime - WINDOW_MS
+      let pageIndex = 1
+      while (true) {
+        try {
+          const res = await commissionFetch(apiKey, secretKey, { startTime, endTime, pageIndex, pageSize: PAGE_SIZE })
+          const list = res?.data?.list ?? []
+          if (!Array.isArray(list) || list.length === 0) break
+          list.forEach(item => {
+            const key = `${item.uid}_${item.commissionTime}`
+            if (!seen.has(key)) { seen.add(key); allItems.push(item) }
+          })
+          if (list.length < PAGE_SIZE) break
+          pageIndex++
+          await sleep(DELAY_MS)
+        } catch (err) {
+          console.error(`[commission] w=${w} page=${pageIndex} ERROR:`, err?.message ?? err)
+          break
+        }
+      }
+      await sleep(DELAY_MS)
+    }
+    return allItems
+  }
+
+  /**
    * 循環抓取所有頁的下線名單（BingX 每頁最多 200 筆）
    * @param {import('axios').AxiosInstance} apiInstance
    * @returns {Promise<Array>}
    */
   async function fetchAllInviteePages(apiInstance) {
     const PAGE_SIZE = 200
+    const DELAY_MS = 120
+    const sleep = ms => new Promise(r => setTimeout(r, ms))
     let pageIndex = 1
     let allItems = []
     while (true) {
@@ -150,8 +258,9 @@ export const useCrmStore = defineStore('crm', () => {
       const list = res?.data?.list ?? []
       if (!Array.isArray(list) || list.length === 0) break
       allItems = allItems.concat(list)
-      if (list.length < PAGE_SIZE) break  // 最後一頁
+      if (list.length < PAGE_SIZE) break
       pageIndex++
+      await sleep(DELAY_MS)
     }
     return allItems
   }
@@ -163,44 +272,42 @@ export const useCrmStore = defineStore('crm', () => {
    * @returns {Promise<number>} 同步筆數
    */
   async function fetchAccount(apiInstance, sourceLabel) {
-    // 下線名單需要分頁循環抓全部；其他兩支 API 目前 code=100400 但仍嘗試
-    const [inviteesResult, commissionRes, assetsRes] = await Promise.allSettled([
+    const [inviteesResult, commissionResult, assetsRes] = await Promise.allSettled([
       fetchAllInviteePages(apiInstance),
-      getCommissionRecords(apiInstance),
+      fetchAllCommissionPages(apiInstance, sourceLabel),   // 新版 v2 每日傭金 API
       getSubAccountAssets(apiInstance),
     ])
 
     // ── 解析下線名單 ──────────────────────────────────────────
     console.log(`[${sourceLabel}] inviteesResult:`, inviteesResult)
-    console.log(`[${sourceLabel}] commissionRes:`, commissionRes)
+    console.log(`[${sourceLabel}] commissionResult:`, commissionResult)
     console.log(`[${sourceLabel}] assetsRes:`, assetsRes)
 
-    // fetchAllInviteePages 回傳陣列，不再是 response 物件
     const inviteeList =
-      inviteesResult.status === 'fulfilled'
-        ? inviteesResult.value
-        : []
+      inviteesResult.status === 'fulfilled' ? inviteesResult.value : []
 
-    // ── 解析返佣紀錄 → 累計 volume、trade_count、最後交易時間 ──
+    // ── 解析最近 7 天傭金明細 → 每 uid 累計交易量、最新傭金日、近期有無交易 ──
+    // 欄位：uid, commissionTime(ms), tradingVolume(USDT string)
     const commissionRaw =
-      commissionRes.status === 'fulfilled'
-        ? (commissionRes.value?.data?.list
-          ?? commissionRes.value?.data?.commissionList
-          ?? [])
-        : []
+      commissionResult.status === 'fulfilled' ? commissionResult.value : []
 
-    // 以 uid 索引返佣資料
-    const commissionMap = {}
+    const commissionMap = {}   // uid → { volume, lastTime, hasRecentTrade }
+    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
     if (Array.isArray(commissionRaw)) {
       commissionRaw.forEach(item => {
-        const uid = String(item.uid ?? item.inviteeId ?? '')
+        const uid = String(item.uid ?? '')
         if (!uid) return
         if (!commissionMap[uid]) {
-          commissionMap[uid] = { volume: 0, tradeCount: 0, lastTime: null }
+          commissionMap[uid] = { volume: 0, lastTime: null, hasRecentTrade: false, tradeCount: 0 }
         }
-        commissionMap[uid].volume += parseFloat(item.volume ?? item.amount ?? item.commissionAmount ?? 0)
-        commissionMap[uid].tradeCount += 1
-        const t = item.time ?? item.createTime ?? item.date ?? item.timestamp
+        const vol = parseFloat(item.tradingVolume ?? 0) || 0
+        commissionMap[uid].volume += vol
+        if (vol > 0) commissionMap[uid].tradeCount += 1
+        // hasRecentTrade 僅計近 7 天（用於心跳更新 last_active_date）
+        if (vol > 0 && item.commissionTime >= sevenDaysAgo) {
+          commissionMap[uid].hasRecentTrade = true
+        }
+        const t = item.commissionTime ?? null
         if (t && (!commissionMap[uid].lastTime || t > commissionMap[uid].lastTime)) {
           commissionMap[uid].lastTime = t
         }
@@ -239,13 +346,13 @@ export const useCrmStore = defineStore('crm', () => {
       ? inviteeList.map(item => {
           const uid = String(item.uid ?? '')
           const cm = commissionMap[uid] ?? {}
-          const lastTime = cm.lastTime
           // registerDateTime 是實際欄位名（registerTime 是文件誤植）
           const regTs = item.registerDateTime ?? item.registerTime ?? null
           // balanceVolume 回傳為字串，優先使用 assets API，次之取 invitee 回傳
           const balance = assetsMap[uid] != null
             ? assetsMap[uid]
             : (item.balanceVolume != null ? parseFloat(item.balanceVolume) : null)
+          const todayStr = new Date().toISOString().slice(0, 10)
           return {
             uid,
             source: sourceLabel,
@@ -255,14 +362,25 @@ export const useCrmStore = defineStore('crm', () => {
             register_timestamp: regTs,
             balance,
             volume_30d: cm.volume > 0 ? cm.volume : null,
+            volume_recent: cm.volume > 0 ? cm.volume : null,
             trade_count_30d: cm.tradeCount ?? 0,
-            last_trade_date: lastTime
-              ? new Date(lastTime).toLocaleDateString('zh-TW')
+            last_trade_date: cm.lastTime
+              ? new Date(cm.lastTime).toISOString().slice(0, 10)
               : null,
-            last_trade_timestamp: lastTime,
+            // hasRecentTrade = 近 7 天有交易量 → 更新心跳日期；否則不含此 key 避免覆蓋歷史值
+            ...(cm.hasRecentTrade ? { last_active_date: todayStr } : {}),
+            last_trade_timestamp: cm.lastTime,
             has_traded: item.trade ?? false,
             has_deposit: item.deposit ?? false,
             kyc: item.kycResult ?? false,
+            account_type: sourceLabel,
+            bingx_register_date: regTs ? new Date(regTs).toISOString().slice(0, 10) : null,
+            inviter_uid_code: (item.inviterSid != null && item.inviterSid !== 0 && item.inviterSid !== '0') ? String(item.inviterSid) : null,
+            invite_type: item.directInvitation != null ? (item.directInvitation ? '直接' : '間接') : null,
+            bound_invite_code: item.inviteCode || null,
+            own_promo_code: item.ownInviteCode || null,
+            bingx_vip_level: (item.userLevel != null && item.userLevel !== 0) ? String(item.userLevel) : null,
+            total_assets: balance,
             line_name: null,
             line_msg_count_7d: 0,
           }
@@ -281,9 +399,20 @@ export const useCrmStore = defineStore('crm', () => {
   function importXlsxRecords(records) {
     let importedCount = 0
     let updatedCount = 0
+
+    // SDD Spec: 每週匯入心跳更新機制 ── 取今日日期作為心跳戳記
+    const todayStr = new Date().toISOString().slice(0, 10) // YYYY-MM-DD
+
     records.forEach(incoming => {
       if (!incoming.uid) return
       const idx = users.value.findIndex(u => u.uid === incoming.uid)
+
+      // SDD Spec: 每週匯入心跳更新機制
+      // volume_recent > 0 → 本週有交易，強制更新 last_active_date 為今日
+      // volume_recent == 0 或空 → 僅更新 volume_recent，絕不覆蓋歷史 last_active_date
+      const vol = parseFloat(incoming.volume_recent)
+      const hasVolume = !isNaN(vol) && vol > 0
+
       if (idx > -1) {
         // 合併：XLSX 欄位覆蓋/補充，但空值不覆蓋既有非空值
         const current = users.value[idx]
@@ -299,20 +428,33 @@ export const useCrmStore = defineStore('crm', () => {
             }
           }
         }
+        // SDD Spec: 每週匯入心跳更新機制 ── 心跳更新
+        if (hasVolume) {
+          merged.last_active_date = todayStr
+          // 以匯入日期作為最後交易日的代理值（API commission 權限不足時的備援）
+          if (!merged.last_trade_date || merged.last_trade_date < todayStr) {
+            merged.last_trade_date = todayStr
+          }
+        }
         users.value[idx] = merged
         updatedCount++
       } else {
-        // 新建
-        users.value.push(createDefaultUser(incoming))
+        // 新建：同樣套用心跳邏輯
+        const newUser = createDefaultUser(incoming)
+        if (hasVolume) {
+          newUser.last_active_date = todayStr
+          newUser.last_trade_date = todayStr
+        }
+        users.value.push(newUser)
         importedCount++
       }
     })
     // 重算 RFM
     users.value = users.value.map(u => {
-      const r = calcRScore(u.last_trade_date)
+      const { r, rfm_tag } = calcRScore(u)
       const f = calcFScore(u.line_msg_count_7d, u.trade_count_30d)
       const m = calcMScore(u.balance, u.volume_recent ?? u.volume_30d)
-      return { ...u, rfm_score: { r, f, m } }
+      return { ...u, rfm_score: { r, f, m }, tags: calcTags(u, r, f, m, rfm_tag) }
     })
     lastSyncTime.value = new Date().toLocaleString('zh-TW')
     return { importedCount, updatedCount }
@@ -371,13 +513,101 @@ export const useCrmStore = defineStore('crm', () => {
 
     // 重算 RFM
     users.value = users.value.map(u => {
-      const r = calcRScore(u.last_trade_date)
+      const { r, rfm_tag } = calcRScore(u)
       const f = calcFScore(u.line_msg_count_7d, u.trade_count_30d)
       const m = calcMScore(u.balance, u.volume_recent ?? u.volume_30d)
-      return { ...u, rfm_score: { r, f, m } }
+      return { ...u, rfm_score: { r, f, m }, tags: calcTags(u, r, f, m, rfm_tag) }
     })
     lastSyncTime.value = new Date().toLocaleString('zh-TW')
     return { updatedCount, newCount, nickUpdated }
+  }
+
+  // ── 三支獨立同步 action ─────────────────────────────────────────
+
+  /**
+   * 只同步下線名單（註冊日、有無交易/入金）
+   */
+  async function fetchInviteesOnly(apiInstance, sourceLabel) {
+    const list = await fetchAllInviteePages(apiInstance)
+    const todayStr = new Date().toISOString().slice(0, 10)
+    const merged = list.map(item => {
+      const uid = String(item.uid ?? '')
+      const regTs = item.registerDateTime ?? item.registerTime ?? null
+      return {
+        uid,
+        source: sourceLabel,
+        register_date: regTs ? new Date(regTs).toLocaleDateString('zh-TW') : null,
+        register_timestamp: regTs,
+        bingx_register_date: regTs ? new Date(regTs).toISOString().slice(0, 10) : null,
+        has_traded: item.trade ?? false,
+        has_deposit: item.deposit ?? false,
+        kyc: item.kycResult ?? false,
+        account_type: sourceLabel,
+        inviter_uid_code: (item.inviterSid != null && item.inviterSid !== 0 && item.inviterSid !== '0') ? String(item.inviterSid) : null,
+        invite_type: item.directInvitation != null ? (item.directInvitation ? '直接' : '間接') : null,
+        bound_invite_code: item.inviteCode || null,
+        own_promo_code: item.ownInviteCode || null,
+        bingx_vip_level: (item.userLevel != null && item.userLevel !== 0) ? String(item.userLevel) : null,
+        balance: item.balanceVolume != null ? parseFloat(item.balanceVolume) : null,
+        total_assets: item.balanceVolume != null ? parseFloat(item.balanceVolume) : null,
+      }
+    })
+    mergeUsers(merged)
+    lastSyncTime.value = new Date().toLocaleString('zh-TW')
+    return merged.length
+  }
+
+  /**
+   * 只同步傭金明細（近 35 天交易量、最後交易日）
+   */
+  async function fetchCommissionOnly(apiInstance, sourceLabel) {
+    const commissionRaw = await fetchAllCommissionPages(apiInstance, sourceLabel)
+    const todayStr = new Date().toISOString().slice(0, 10)
+    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
+    const commissionMap = {}
+    if (Array.isArray(commissionRaw)) {
+      commissionRaw.forEach(item => {
+        const uid = String(item.uid ?? '')
+        if (!uid) return
+        if (!commissionMap[uid]) commissionMap[uid] = { volume: 0, lastTime: null, hasRecentTrade: false, tradeCount: 0 }
+        const vol = parseFloat(item.tradingVolume ?? 0) || 0
+        commissionMap[uid].volume += vol
+        if (vol > 0) commissionMap[uid].tradeCount += 1
+        if (vol > 0 && item.commissionTime >= sevenDaysAgo) commissionMap[uid].hasRecentTrade = true
+        const t = item.commissionTime ?? null
+        if (t && (!commissionMap[uid].lastTime || t > commissionMap[uid].lastTime)) commissionMap[uid].lastTime = t
+      })
+    }
+    const merged = Object.entries(commissionMap).map(([uid, cm]) => ({
+      uid,
+      volume_30d: cm.volume > 0 ? cm.volume : null,
+      volume_recent: cm.volume > 0 ? cm.volume : null,
+      trade_count_30d: cm.tradeCount ?? 0,
+      last_trade_date: cm.lastTime ? new Date(cm.lastTime).toISOString().slice(0, 10) : null,
+      last_trade_timestamp: cm.lastTime,
+      ...(cm.hasRecentTrade ? { last_active_date: todayStr } : {}),
+    }))
+    mergeUsers(merged)
+    lastSyncTime.value = new Date().toLocaleString('zh-TW')
+    return merged.length
+  }
+
+  /**
+   * 只同步帳戶餘額（來源：Invitee List 的 balanceVolume 欄位）
+   * 注：/openApi/v3/subAccount/assets 不支援代理帳號，餘額數據在下線名單中
+   */
+  async function fetchAssetsOnly(apiInstance, sourceLabel) {
+    const list = await fetchAllInviteePages(apiInstance)
+    const merged = list
+      .filter(item => item.balanceVolume != null)
+      .map(item => ({
+        uid: String(item.uid ?? ''),
+        balance: parseFloat(item.balanceVolume) || 0,
+      }))
+      .filter(item => item.uid)
+    mergeUsers(merged)
+    lastSyncTime.value = new Date().toLocaleString('zh-TW')
+    return merged.length
   }
 
   /**
@@ -407,6 +637,17 @@ export const useCrmStore = defineStore('crm', () => {
     lastSyncTime.value = new Date().toLocaleString('zh-TW')
   }
 
+  /** 強制重算所有用戶的 RFM 分數與分眾標籤（不依賴 API，僅用現有資料）*/
+  function recalcRfm() {
+    users.value = users.value.map(u => {
+      const { r, rfm_tag } = calcRScore(u)
+      const f = calcFScore(u.line_msg_count_7d, u.trade_count_30d)
+      const m = calcMScore(u.balance, u.volume_recent ?? u.volume_30d)
+      return { ...u, rfm_score: { r, f, m }, tags: calcTags(u, r, f, m, rfm_tag) }
+    })
+    lastSyncTime.value = new Date().toLocaleString('zh-TW')
+  }
+
   return {
     users,
     loading,
@@ -420,5 +661,9 @@ export const useCrmStore = defineStore('crm', () => {
     updateUser,
     setLoading,
     fetchAccount,
+    fetchInviteesOnly,
+    fetchCommissionOnly,
+    fetchAssetsOnly,
+    recalcRfm,
   }
 })

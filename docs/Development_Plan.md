@@ -1,7 +1,7 @@
 # ATQT CRM 系統：六階段開發計畫
 
 **對應 PRD：** [ATQT_CRM_PRD_v1.1.md](./ATQT_CRM_PRD_v1.1.md)  
-**最後更新：** 2026-02-28
+**最後更新：** 2026-03-01
 
 ---
 
@@ -22,17 +22,22 @@
 - [x] 安裝 `crypto-js`，實作 BingX HMAC SHA256 簽名。
 - [x] 封裝 `createBingxInstance()` 工廠函式，支援雙帳號獨立呼叫。
 - [x] `<el-table>` 渲染真實 UID、帳號來源標籤、RFM 評分。
-> **驗收結果：** 雙帳號並行同步，`Promise.allSettled` 任一失敗不中斷。
+- [x] **[CR-002]** 傭金 API 改用純 `fetch()` 函式 `commissionFetch()`，繞過 axios 攔截器，解決 `recvWindow` 造成的 signature mismatch (code=100001)。
+- [x] **[CR-002]** 同步按鈕合併為單一下拉選單（全部同步 / 下線名單 / 傭金明細 / 帳戶餘額）。
+> **驗收結果：** 雙帳號並行同步，`Promise.allSettled` 任一失敗不中斷；傭金明細 `code: 0` 確認成功。
 
 ---
 
 ## 階段三：資料擴充與 RFM 智能分眾系統 ✅ 已完成
 **目標：將資產與交易量併入客戶總表，讓系統自動打上分眾標籤。**
-- [x] 開發 API 請求：獲取子帳戶資產餘額 (`balance`) 與返佣紀錄 (`volume`, `fee`)。
-- [x] 實作資料合併邏輯：以 `uid` 為基準，合併資產與交易量至現有總表。
-- [x] 驗證 RFM 計算邏輯，以真實數據確認 R/F/M 評分正確。
-- [x] 優化 `<el-table>` 快速篩選按鈕，確保 VIP / 沉睡戶篩選正確。
-> **驗收結果：** `fetchAccount` 並行呼叫三支 API，以 uid 合併並即時計算 RFM 分數與動態標籤。
+- [x] 開發 API 請求：獲取傭金紀錄 (`volume`, `lastTime`) 與下線名單內建帳戶餘額 (`balanceVolume`)。
+- [x] **[CR-002]** `/openApi/v3/subAccount/assets` 對代理商帳號無權限 (code 100400)，改以下線名單 API 的 `balanceVolume` 欄位取得餘額。
+- [x] **[CR-002]** 全欄位對應：`inviterSid`→`inviter_uid_code`、`directInvitation`→`invite_type`、`inviteCode`→`bound_invite_code`、`ownInviteCode`→`own_promo_code`、`userLevel`→`bingx_vip_level`、`balanceVolume`→`total_assets`。
+- [x] 實作資料合併邏輯：以 `uid` 為基準，`mergeUsers()` 空值不覆蓋既有非空值。
+- [x] 驗證 RFM 計算邏輯，`last_active_date` 心跳機制作為 R 分依據。
+- [x] `volume_30d` 與 `volume_recent` 雙寫，確保表格與詳細頁顯示一致。
+- [x] 優化快速篩選按鈕，確保 VIP / 沉睡戶篩選正確。
+> **驗收結果：** 全部同步後，邀請類型、邀請人 UID、綁定邀請碼、推廣碼、VIP 等級、資產餘額皆正確填入。
 
 ---
 

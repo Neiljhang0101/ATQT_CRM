@@ -77,6 +77,32 @@ function detectAccountType(filename) {
   return null
 }
 
+/**
+ * Excel 日期序號 / Date 物件 / 字串 → 'YYYY-MM-DD' 字串
+ * Excel 日期序號：1 = 1900-01-01；換算公式 (serial - 25569) * 86400000 為 UTC ms
+ */
+function parseExcelDate(val) {
+  if (val === null || val === undefined || val === '') return null
+  // 已是合理日期字串
+  if (typeof val === 'string') {
+    const s = val.trim()
+    if (/^\d{4}[-/]\d{1,2}[-/]\d{1,2}/.test(s)) {
+      return s.slice(0, 10).replace(/\//g, '-')
+    }
+    return s || null
+  }
+  // Date 物件
+  if (val instanceof Date) {
+    return val.toISOString().slice(0, 10)
+  }
+  // Excel 序號數字（正整數）
+  if (typeof val === 'number' && val > 1) {
+    const d = new Date(Math.round((val - 25569) * 86400 * 1000))
+    return d.toISOString().slice(0, 10)
+  }
+  return String(val)
+}
+
 // ── 主要解析函式 ─────────────────────────────────────────────────
 
 /**
@@ -109,6 +135,13 @@ function parseSheet(rows, fileType, accountType) {
 
       if (record.total_assets !== undefined) {
         record.total_assets = parseFloat(record.total_assets) || 0
+      }
+      // Excel 日期欄位序號轉換
+      if (record.first_deposit_time !== undefined) {
+        record.first_deposit_time = parseExcelDate(record.first_deposit_time)
+      }
+      if (record.bingx_register_date !== undefined) {
+        record.bingx_register_date = parseExcelDate(record.bingx_register_date)
       }
       records.push(record)
 
@@ -147,7 +180,7 @@ function parseSheet(rows, fileType, accountType) {
           record.uid = String(val)
         } else if (h.includes('LINE') && h.includes('稱呼')) {
           record.line_name = String(val)
-        } else if (h.includes('LINE') && h.includes('名字')) {
+        } else if (h.includes('LINE') && h.includes('名字') && !h.includes('稱呼')) {
           record.line_display_name = String(val)
         }
       }

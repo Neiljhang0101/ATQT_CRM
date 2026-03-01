@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh-TW"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RFM 分眾規則配置說明</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#47a1fa", // Blue primary color
+                        "primary-dark": "#2c80d6",
+                        "background-light": "#f5f7f8",
+                        "background-dark": "#0f1923",
+                        surface: "#ffffff",
+                        "surface-dark": "#1e293b",
+                        border: "#e2e8f0",
+                        "border-dark": "#334155",
+                    },
+                    fontFamily: {
+                        display: ["Inter", "sans-serif"],
+                        sans: ["Inter", "sans-serif"],
+                    },
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display min-h-screen flex items-center justify-center p-4">
+<div class="bg-surface dark:bg-surface-dark w-full max-w-[1024px] rounded-xl shadow-2xl overflow-hidden border border-border dark:border-border-dark flex flex-col max-h-[90vh]">
+<div class="px-6 py-5 border-b border-border dark:border-border-dark flex justify-between items-center bg-white dark:bg-surface-dark sticky top-0 z-10">
+<div>
+<h3 class="text-xl font-bold text-slate-900 dark:text-white leading-tight">RFM 分眾規則配置說明</h3>
+<p class="text-slate-500 dark:text-slate-400 text-sm mt-1">檢視基於交易行為的自動化客戶分眾邏輯。</p>
+</div>
+<button class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<div class="flex-1 overflow-y-auto p-6">
+<div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg p-4 mb-6 flex gap-3">
+<span class="material-symbols-outlined text-primary mt-0.5">info</span>
+<div class="text-sm text-slate-700 dark:text-slate-300">
+<p class="font-medium text-slate-900 dark:text-white mb-1">RFM 評分運作方式</p>
+<p>RFM (Recency, Frequency, Monetary) 評分會自動將您的客戶進行分眾。
+                    系統會評估客戶最後一次交易的<span class="font-semibold">近況 (Recency)</span>、一段時間內的交易<span class="font-semibold">頻率 (Frequency)</span>，以及總交易<span class="font-semibold">金額 (Monetary)</span>。下方顯示了目前用於計算「王牌客戶」或「流失風險」等分眾的門檻設定。</p>
+</div>
+</div>
+<div class="border border-border dark:border-border-dark rounded-lg overflow-hidden mb-2">
+<div class="overflow-x-auto">
+<table class="w-full text-sm text-left">
+<thead class="bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-medium border-b border-border dark:border-border-dark">
+<tr>
+<th class="px-4 py-3 w-48">分眾名稱</th>
+<th class="px-4 py-3">最後交易 (天數)</th>
+<th class="px-4 py-3">交易頻率 (次數)</th>
+<th class="px-4 py-3">交易金額 ($)</th>
+<th class="px-4 py-3 w-32">分眾標籤</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-border dark:divide-border-dark bg-white dark:bg-surface-dark">
+<tr class="group hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+<td class="px-4 py-3 font-medium text-slate-900 dark:text-white">王牌客戶 (Champions)</td>
+<td class="px-4 py-3">
+<div class="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+<span>&lt; 7 天</span>
+</div>
+</td>
+<td class="px-4 py-3">
+<div class="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+<span>&gt; 50 次</span>
+</div>
+</td>
+<td class="px-4 py-3">
+<div class="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+<span>&gt; $100,000</span>
+</div>
+</td>
+<td class="px-4 py-3">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">
+                                        Platinum
+                                    </span>
+</td>
+</tr>
+<tr class="group hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+<td class="px-4 py-3 font-medium text-slate-900 dark:text-white">忠實客戶 (Loyal Customers)</td>
+<td class="px-4 py-3">
+<div class="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+<span>7 - 30 天</span>
+</div>
+</td>
+<td class="px-4 py-3">
+<div class="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+<span>20 - 50 次</span>
+</div>
+</td>
+<td class="px-4 py-3">
+<div class="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+<span>$10,000 - $100,000</span>
+</div>
+</td>
+<td class="px-4 py-3">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
+                                        Gold
+                                    </span>
+</td>
+</tr>
+<tr class="group hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+<td class="px-4 py-3 font-medium text-slate-900 dark:text-white">潛力客戶 (Potential Loyalist)</td>
+<td class="px-4 py-3">
+<div class="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+<span>30 - 60 天</span>
+</div>
+</td>
+<td class="px-4 py-3">
+<div class="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+<span>5 - 20 次</span>
+</div>
+</td>
+<td class="px-4 py-3">
+<div class="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+<span>$1,000 - $10,000</span>
+</div>
+</td>
+<td class="px-4 py-3">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-300">
+                                        Silver
+                                    </span>
+</td>
+</tr>
+<tr class="group hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+<td class="px-4 py-3 font-medium text-slate-900 dark:text-white">流失風險 (At Risk)</td>
+<td class="px-4 py-3">
+<div class="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+<span>60 - 90 天</span>
+</div>
+</td>
+<td class="px-4 py-3">
+<div class="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+<span>&lt; 5 次</span>
+</div>
+</td>
+<td class="px-4 py-3">
+<div class="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+<span>&lt; $1,000</span>
+</div>
+</td>
+<td class="px-4 py-3">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
+                                        Bronze
+                                    </span>
+</td>
+</tr>
+<tr class="group hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+<td class="px-4 py-3 font-medium text-slate-900 dark:text-white">已流失客戶 (Lost Customers)</td>
+<td class="px-4 py-3">
+<div class="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+<span>&gt; 90 天</span>
+</div>
+</td>
+<td class="px-4 py-3">
+<div class="text-slate-700 dark:text-slate-300">0</div>
+</td>
+<td class="px-4 py-3">
+<div class="text-slate-700 dark:text-slate-300">0</div>
+</td>
+<td class="px-4 py-3">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                                        Inactive
+                                    </span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="bg-slate-50 dark:bg-slate-800 px-4 py-3 border-t border-border dark:border-border-dark flex items-center gap-2">
+<span class="material-symbols-outlined text-slate-400 text-lg">schedule</span>
+<span class="text-xs text-slate-500 dark:text-slate-400">數值每日 00:00 UTC 自動結算。</span>
+</div>
+</div>
+</div>
+<div class="bg-slate-50 dark:bg-slate-800 px-6 py-4 border-t border-border dark:border-border-dark flex justify-end items-center">
+<button class="px-6 py-2 rounded-lg bg-white border border-border dark:border-border-dark dark:bg-surface-dark text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 font-medium text-sm transition-colors shadow-sm">
+                關閉
+            </button>
+</div>
+</div>
+
+</body></html>

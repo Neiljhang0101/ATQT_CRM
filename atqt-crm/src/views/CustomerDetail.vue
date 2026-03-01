@@ -67,6 +67,16 @@ function accountTypeLabel(v) {
   return v ?? '--'
 }
 
+// 分眾象限代表 emoji（頭像用）
+const segmentIcon = computed(() => {
+  const tags = user.value?.tags
+  if (!Array.isArray(tags) || tags.length === 0) return '--'
+  const mainTag = tags.find(t => !t.includes('社群') && !t.includes('入金未交易'))
+  if (!mainTag) return '--'
+  // 取第一個字元（emoji）
+  return [...mainTag][0] ?? '--'
+})
+
 // 邀請人 LINE 暱稱：優先用手填欄位，否則從資料庫查找邀請人 UID
 const inviterLineName = computed(() => {
   if (!user.value) return null
@@ -213,9 +223,11 @@ function tagBadgeStyle(tag) {
         <div class="bg-white rounded-md" style="border:1px solid #e4e7ed;box-shadow:0 0 12px rgba(0,0,0,0.05);">
           <div class="p-5 flex flex-col sm:flex-row items-start sm:items-center gap-5">
             <!-- Avatar Circle -->
-            <div class="w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold flex-shrink-0"
-              style="background:#ecf5ff;color:#409EFF;border:1px solid rgba(64,158,255,0.2);">
-              {{ String(user.uid).slice(-2) }}
+            <div class="w-14 h-14 rounded-full flex items-center justify-center flex-shrink-0"
+              :style="segmentIcon === '--'
+                ? 'background:#f5f7fa;color:#909399;border:1px solid #e4e7ed;font-size:18px;font-weight:600;'
+                : 'background:#ecf5ff;border:1px solid rgba(64,158,255,0.18);font-size:26px;'">
+              {{ segmentIcon }}
             </div>
             <div class="flex-1 flex flex-col gap-2">
               <div class="flex items-center gap-3 flex-wrap">

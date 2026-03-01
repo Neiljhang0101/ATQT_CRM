@@ -31,6 +31,18 @@ const audienceTags = ref([])   // 分眾標籤多選
 const socialTags   = ref([])   // 社群互動標籤多選
 const searchUid    = ref('')
 const hideNonGroup = ref(true)
+const showRfmInfo  = ref(false)
+
+const rfmRows = [
+  { tag: '👑 核心VIP',       r: '↑', f: '↑', m: '↑', desc: '最高價值，全力維護' },
+  { tag: '💰 資金型活躍戶',   r: '↑', f: '↓', m: '↑', desc: '有錢有活動但互動少，加強聯繫頻率' },
+  { tag: '⚡ 高淨值沉默戶',   r: '↓', f: '↑', m: '↑', desc: '高資產但開始疏遠，優先挽留' },
+  { tag: '🚨 大戶流失危機',   r: '↓', f: '↓', m: '↑', desc: '高資產全面低落，最緊急挽留' },
+  { tag: '📊 活躍成長戶',     r: '↑', f: '↑', m: '↓', desc: '互動積極，培養資金規模' },
+  { tag: '📉 輕倉回訪戶',     r: '↑', f: '↓', m: '↓', desc: '最近有回來但低度參與，引導深入' },
+  { tag: '🔄 老客低迷戶',     r: '↓', f: '↑', m: '↓', desc: '還在互動但逐漸流失，需再激活' },
+  { tag: '💤 休眠待喚醒',     r: '↓', f: '↓', m: '↓', desc: '全面沉寂，低優先再行銷' },
+]
 const currentPage  = ref(1)
 const pageSize     = ref(50)
 const sortField    = ref('')
@@ -523,6 +535,14 @@ async function submitCreateForm() {
 
         <div style="width:1px;height:22px;background:#e4e7ed;flex-shrink:0;"></div>
 
+        <!-- 分眾標籤說明按鈕 -->
+        <button @click="showRfmInfo = true"
+          class="flex items-center justify-center transition-colors"
+          style="width:30px;height:30px;border-radius:3px;border:1px solid #dcdfe6;background:#f5f7fa;color:#909399;flex-shrink:0;"
+          title="RFM 分眾說明">
+          <span class="material-symbols-outlined" style="font-size:17px;">info</span>
+        </button>
+
         <!-- 分眾標籤下拉多選 -->
         <el-select
           v-model="audienceTags"
@@ -825,6 +845,129 @@ async function submitCreateForm() {
             </span>
           </button>
         </div>
+      </div>
+    </template>
+  </el-dialog>
+
+  <!-- RFM 分眾說明彈窗 -->
+  <el-dialog v-model="showRfmInfo" width="780px" :show-close="false" style="border-radius:8px;overflow:hidden;">
+    <template #header>
+      <div class="flex justify-between items-start" style="padding:20px 24px 16px;">
+        <div>
+          <div class="font-bold" style="font-size:17px;color:#1a1d23;">RFM 分眾規則配置說明</div>
+          <div style="font-size:13px;color:#909399;margin-top:3px;">基於交易行為的自動化客戶分眾邏輯</div>
+        </div>
+        <button @click="showRfmInfo = false" class="flex items-center justify-center transition-colors"
+          style="width:32px;height:32px;border-radius:4px;border:none;background:transparent;color:#909399;cursor:pointer;">
+          <span class="material-symbols-outlined" style="font-size:20px;">close</span>
+        </button>
+      </div>
+    </template>
+
+    <div style="padding:0 24px 8px;max-height:65vh;overflow-y:auto;">
+      <!-- 說明卡 -->
+      <div style="background:rgba(64,158,255,0.06);border:1px solid rgba(64,158,255,0.2);border-radius:6px;padding:14px 16px;margin-bottom:18px;display:flex;gap:12px;">
+        <span class="material-symbols-outlined" style="color:#409EFF;font-size:20px;flex-shrink:0;margin-top:1px;">info</span>
+        <div style="font-size:13px;color:#606266;line-height:1.7;">
+          <div style="font-weight:600;color:#303133;margin-bottom:4px;">RFM 評分運作方式</div>
+          RFM 由三個維度構成：<strong>R（Recency）</strong> 最近活躍天數、<strong>F（Frequency）</strong> 互動頻率（LINE訊息 + 交易）、<strong>M（Monetary）</strong> 資產規模。
+          每個維度以門檻 3 分為界二元化（高↑ / 低↓），組合出 8 個象限，每位客戶自動分配唯一主標籤。
+        </div>
+      </div>
+
+      <!-- 門檻表 -->
+      <div style="font-size:13px;font-weight:600;color:#303133;margin-bottom:8px;">評分門檻</div>
+      <div style="border:1px solid #e4e7ed;border-radius:6px;overflow:hidden;margin-bottom:18px;">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead>
+            <tr style="background:#f5f7fa;color:#909399;font-weight:500;">
+              <th style="padding:9px 14px;text-align:left;border-bottom:1px solid #e4e7ed;">維度</th>
+              <th style="padding:9px 14px;text-align:left;border-bottom:1px solid #e4e7ed;">高（↑，分數 ≥ 3）</th>
+              <th style="padding:9px 14px;text-align:left;border-bottom:1px solid #e4e7ed;">低（↓，分數 ≤ 2）</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom:1px solid #f0f2f5;">
+              <td style="padding:9px 14px;font-weight:600;color:#303133;">R（近況）</td>
+              <td style="padding:9px 14px;color:#52A135;">30 天內有活動</td>
+              <td style="padding:9px 14px;color:#F56C6C;">超過 30 天未活動</td>
+            </tr>
+            <tr style="border-bottom:1px solid #f0f2f5;">
+              <td style="padding:9px 14px;font-weight:600;color:#303133;">F（頻率）</td>
+              <td style="padding:9px 14px;color:#52A135;">combined ≥ 5（LINE訊息數/10 + 交易天數）</td>
+              <td style="padding:9px 14px;color:#F56C6C;">combined &lt; 5</td>
+            </tr>
+            <tr>
+              <td style="padding:9px 14px;font-weight:600;color:#303133;">M（資產）</td>
+              <td style="padding:9px 14px;color:#52A135;">餘額 &gt; 500U 或近30天交易量 &gt; 30萬U</td>
+              <td style="padding:9px 14px;color:#F56C6C;">以下</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 8象限表 -->
+      <div style="font-size:13px;font-weight:600;color:#303133;margin-bottom:8px;">8 象限分眾標籤</div>
+      <div style="border:1px solid #e4e7ed;border-radius:6px;overflow:hidden;margin-bottom:18px;">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead>
+            <tr style="background:#f5f7fa;color:#909399;font-weight:500;">
+              <th style="padding:9px 14px;text-align:left;border-bottom:1px solid #e4e7ed;">標籤</th>
+              <th style="padding:9px 14px;text-align:center;border-bottom:1px solid #e4e7ed;">R</th>
+              <th style="padding:9px 14px;text-align:center;border-bottom:1px solid #e4e7ed;">F</th>
+              <th style="padding:9px 14px;text-align:center;border-bottom:1px solid #e4e7ed;">M</th>
+              <th style="padding:9px 14px;text-align:left;border-bottom:1px solid #e4e7ed;">行銷意涵</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in rfmRows" :key="row.tag" style="border-bottom:1px solid #f0f2f5;" class="hover:bg-slate-50">
+              <td style="padding:9px 14px;">
+                <span class="inline-flex items-center px-2 py-0.5 font-medium"
+                  :style="`background:${tagStyle(row.tag).bg};color:${tagStyle(row.tag).color};border:1px solid ${tagStyle(row.tag).border};border-radius:3px;font-size:12px;`">{{ row.tag }}</span>
+              </td>
+              <td style="padding:9px 14px;text-align:center;font-size:15px;">{{ row.r }}</td>
+              <td style="padding:9px 14px;text-align:center;font-size:15px;">{{ row.f }}</td>
+              <td style="padding:9px 14px;text-align:center;font-size:15px;">{{ row.m }}</td>
+              <td style="padding:9px 14px;color:#606266;">{{ row.desc }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 疊加標籤 -->
+      <div style="font-size:13px;font-weight:600;color:#303133;margin-bottom:8px;">特殊 / 疊加標籤</div>
+      <div style="border:1px solid #e4e7ed;border-radius:6px;overflow:hidden;margin-bottom:8px;">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead>
+            <tr style="background:#f5f7fa;color:#909399;font-weight:500;">
+              <th style="padding:9px 14px;text-align:left;border-bottom:1px solid #e4e7ed;">標籤</th>
+              <th style="padding:9px 14px;text-align:left;border-bottom:1px solid #e4e7ed;">觸發條件</th>
+              <th style="padding:9px 14px;text-align:left;border-bottom:1px solid #e4e7ed;">行為</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom:1px solid #f0f2f5;">
+              <td style="padding:9px 14px;"><span class="inline-flex items-center px-2 py-0.5 font-medium" style="background:rgba(64,190,100,0.12);color:#2E9E50;border:1px solid rgba(64,190,100,0.4);border-radius:3px;font-size:12px;">🌟 新手待破蛋</span></td>
+              <td style="padding:9px 14px;color:#606266;">距註冊 / 首入金 ≤ 7 天</td>
+              <td style="padding:9px 14px;color:#606266;">覆蓋全部，不進象限判斷</td>
+            </tr>
+            <tr>
+              <td style="padding:9px 14px;"><span class="inline-flex items-center px-2 py-0.5 font-medium" style="background:rgba(32,178,135,0.10);color:#18A77A;border:1px solid rgba(32,178,135,0.35);border-radius:3px;font-size:12px;">🌱 入金未交易</span></td>
+              <td style="padding:9px 14px;color:#606266;">has_deposit = true 且 has_traded = false</td>
+              <td style="padding:9px 14px;color:#606266;">疊加在主標籤上</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <template #footer>
+      <div style="padding:12px 24px;border-top:1px solid #e4e7ed;text-align:right;">
+        <button @click="showRfmInfo = false"
+          class="transition-colors"
+          style="padding:7px 20px;border-radius:4px;border:1px solid #dcdfe6;background:#fff;color:#606266;font-size:14px;cursor:pointer;">
+          關閉
+        </button>
       </div>
     </template>
   </el-dialog>

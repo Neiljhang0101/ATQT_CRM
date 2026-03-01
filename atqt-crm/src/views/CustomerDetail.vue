@@ -131,15 +131,19 @@ const lineStats = computed(() => {
 })
 
 function tagBadgeStyle(tag) {
-  if (tag.includes('核心 VIP'))         return 'background:rgba(230,162,60,0.13);color:#B7860B;border:1px solid rgba(230,162,60,0.4);'
-  if (tag.includes('高淨值'))            return 'background:rgba(230,162,60,0.10);color:#E6A23C;border:1px solid rgba(230,162,60,0.3);'
-  if (tag.includes('新手待破蛋'))        return 'background:rgba(103,194,58,0.12);color:#52A135;border:1px solid rgba(103,194,58,0.4);'
-  if (tag.includes('入金未交易'))        return 'background:rgba(32,178,135,0.10);color:#18A77A;border:1px solid rgba(32,178,135,0.35);'
-  if (tag.includes('高潛力活躍'))        return 'background:rgba(245,108,108,0.10);color:#D94F4F;border:1px solid rgba(245,108,108,0.32);'
-  if (tag.includes('穩定交易'))          return 'background:#ecf5ff;color:#409EFF;border:1px solid rgba(64,158,255,0.35);'
-  if (tag.includes('流失預警'))          return 'background:rgba(230,100,0,0.10);color:#C05800;border:1px solid rgba(230,100,0,0.32);'
-  if (tag.includes('沉睡') || tag.includes('沈睡')) return 'background:rgba(245,108,108,0.12);color:#F56C6C;border:1px solid rgba(245,108,108,0.3);'
-  if (tag.includes('已流失'))            return 'background:rgba(144,158,171,0.13);color:#607D8B;border:1px solid rgba(144,158,171,0.35);'
+  // 8象限標籤
+  if (tag.includes('核心VIP'))           return 'background:rgba(230,162,60,0.15);color:#B7860B;border:1px solid rgba(230,162,60,0.45);'
+  if (tag.includes('資金型活躍'))         return 'background:rgba(103,194,58,0.12);color:#52A135;border:1px solid rgba(103,194,58,0.4);'
+  if (tag.includes('高淨值沉默'))         return 'background:rgba(230,120,0,0.12);color:#C06000;border:1px solid rgba(230,120,0,0.38);'
+  if (tag.includes('大戶流失'))           return 'background:rgba(245,60,60,0.13);color:#D03030;border:1px solid rgba(245,60,60,0.42);'
+  if (tag.includes('活躍成長'))           return 'background:#ecf5ff;color:#409EFF;border:1px solid rgba(64,158,255,0.35);'
+  if (tag.includes('輕倉回訪'))           return 'background:rgba(123,97,255,0.10);color:#6B4FCC;border:1px solid rgba(123,97,255,0.32);'
+  if (tag.includes('老客低迷'))           return 'background:rgba(230,100,0,0.10);color:#C05800;border:1px solid rgba(230,100,0,0.32);'
+  if (tag.includes('休眠待喚醒'))         return 'background:rgba(144,158,171,0.11);color:#607D8B;border:1px solid rgba(144,158,171,0.32);'
+  // 特殊疊加標籤
+  if (tag.includes('新手待破蛋'))         return 'background:rgba(64,190,100,0.12);color:#2E9E50;border:1px solid rgba(64,190,100,0.4);'
+  if (tag.includes('入金未交易'))         return 'background:rgba(32,178,135,0.10);color:#18A77A;border:1px solid rgba(32,178,135,0.35);'
+  // 社群互動標籤
   if (tag.includes('社群超高互動'))       return 'background:rgba(0,196,180,0.13);color:#008C80;border:1px solid rgba(0,196,180,0.4);'
   if (tag.includes('社群高互動'))         return 'background:rgba(32,178,135,0.11);color:#18A77A;border:1px solid rgba(32,178,135,0.38);'
   if (tag.includes('社群互動中'))         return 'background:rgba(64,158,255,0.10);color:#337ECC;border:1px solid rgba(64,158,255,0.32);'

@@ -230,15 +230,19 @@ function copyUid(uid) {
 }
 
 function tagStyle(tag) {
-  if (tag.includes('核心 VIP'))         return { bg: 'rgba(230,162,60,0.13)', color: '#B7860B', border: 'rgba(230,162,60,0.4)' }
-  if (tag.includes('高淨值'))            return { bg: 'rgba(230,162,60,0.10)', color: '#E6A23C', border: 'rgba(230,162,60,0.3)' }
-  if (tag.includes('新手待破蛋'))        return { bg: 'rgba(103,194,58,0.12)',  color: '#52A135', border: 'rgba(103,194,58,0.4)' }
-  if (tag.includes('入金未交易'))        return { bg: 'rgba(32,178,135,0.10)',  color: '#18A77A', border: 'rgba(32,178,135,0.35)' }
-  if (tag.includes('高潛力活躍'))        return { bg: 'rgba(245,108,108,0.10)', color: '#D94F4F', border: 'rgba(245,108,108,0.32)' }
-  if (tag.includes('穩定交易'))          return { bg: '#ecf5ff',                color: '#409EFF', border: 'rgba(64,158,255,0.35)' }
-  if (tag.includes('流失預警'))          return { bg: 'rgba(230,100,0,0.10)',   color: '#C05800', border: 'rgba(230,100,0,0.32)' }
-  if (tag.includes('沉睡') || tag.includes('沈睡')) return { bg: 'rgba(245,108,108,0.12)', color: '#F56C6C', border: 'rgba(245,108,108,0.3)' }
-  if (tag.includes('已流失'))            return { bg: 'rgba(144,158,171,0.13)', color: '#607D8B', border: 'rgba(144,158,171,0.35)' }
+  // 8象限標籤
+  if (tag.includes('核心VIP'))           return { bg: 'rgba(230,162,60,0.15)',  color: '#B7860B', border: 'rgba(230,162,60,0.45)' }
+  if (tag.includes('資金型活躍'))         return { bg: 'rgba(103,194,58,0.12)',  color: '#52A135', border: 'rgba(103,194,58,0.4)' }
+  if (tag.includes('高淨值沉默'))         return { bg: 'rgba(230,120,0,0.12)',   color: '#C06000', border: 'rgba(230,120,0,0.38)' }
+  if (tag.includes('大戶流失'))           return { bg: 'rgba(245,60,60,0.13)',   color: '#D03030', border: 'rgba(245,60,60,0.42)' }
+  if (tag.includes('活躍成長'))           return { bg: '#ecf5ff',                color: '#409EFF', border: 'rgba(64,158,255,0.35)' }
+  if (tag.includes('輕倉回訪'))           return { bg: 'rgba(123,97,255,0.10)',  color: '#6B4FCC', border: 'rgba(123,97,255,0.32)' }
+  if (tag.includes('老客低迷'))           return { bg: 'rgba(230,100,0,0.10)',   color: '#C05800', border: 'rgba(230,100,0,0.32)' }
+  if (tag.includes('休眠待喚醒'))         return { bg: 'rgba(144,158,171,0.11)', color: '#607D8B', border: 'rgba(144,158,171,0.32)' }
+  // 特殊疊加標籤
+  if (tag.includes('新手待破蛋'))         return { bg: 'rgba(64,190,100,0.12)',  color: '#2E9E50', border: 'rgba(64,190,100,0.4)' }
+  if (tag.includes('入金未交易'))         return { bg: 'rgba(32,178,135,0.10)',  color: '#18A77A', border: 'rgba(32,178,135,0.35)' }
+  // 社群互動標籤
   if (tag.includes('社群超高互動'))       return { bg: 'rgba(0,196,180,0.13)',   color: '#008C80', border: 'rgba(0,196,180,0.4)' }
   if (tag.includes('社群高互動'))         return { bg: 'rgba(32,178,135,0.11)',  color: '#18A77A', border: 'rgba(32,178,135,0.38)' }
   if (tag.includes('社群互動中'))         return { bg: 'rgba(64,158,255,0.10)',  color: '#337ECC', border: 'rgba(64,158,255,0.32)' }
@@ -530,15 +534,16 @@ async function submitCreateForm() {
           @change="filterMode = 'all'"
         >
           <el-option v-for="t in [
-            { key:'核心 VIP',   label:'👑 核心 VIP' },
-            { key:'新手待破蛋', label:'🌟 新手待破蛋' },
-            { key:'入金未交易', label:'🌱 入金未交易' },
-            { key:'高潛力活躍', label:'🔥 高潛力活躍戶' },
-            { key:'穩定交易',   label:'📊 穩定交易戶' },
-            { key:'流失預警',   label:'⏰ 流失預警' },
-            { key:'已流失',     label:'❄️ 已流失老客' },
-            { key:'沉睡',       label:'💤 沉睡流失' },
-            { key:'高淨值',     label:'⚠️ 沉睡高淨值戶' },
+            { key:'核心VIP',     label:'👑 核心VIP' },
+            { key:'資金型活躍',  label:'💰 資金型活躍戶' },
+            { key:'高淨值沉默',  label:'⚡ 高淨值沉默戶' },
+            { key:'大戶流失',    label:'🚨 大戶流失危機' },
+            { key:'活躍成長',    label:'📊 活躍成長戶' },
+            { key:'輕倉回訪',    label:'📉 輕倉回訪戶' },
+            { key:'老客低迷',    label:'🔄 老客低迷戶' },
+            { key:'休眠待喚醒',  label:'💤 休眠待喚醒' },
+            { key:'新手待破蛋',  label:'🌟 新手待破蛋' },
+            { key:'入金未交易',  label:'🌱 入金未交易' },
           ]" :key="t.key" :label="t.label" :value="t.key" />
         </el-select>
 

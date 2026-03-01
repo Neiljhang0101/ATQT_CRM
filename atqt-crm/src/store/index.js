@@ -143,30 +143,42 @@ export const useCrmStore = defineStore('crm', () => {
    */
   function calcTags(u, r, f, m, rfm_tag) {
     const tags = []
-    // R-based 基礎標籤（曾交易過的用更精確標籤替換"流失風险"）
-    if (rfm_tag) {
-      if (rfm_tag === '💤 沈睡流失風险' && u.has_traded) {
-        tags.push('❄️ 已流失老客')
-      } else {
-        tags.push(rfm_tag)
-      }
-    }
-    // 複合標籤（高資產）
-    if (m === 5 && (r >= 4 || f >= 4)) tags.push('👑 核心 VIP')
-    if (m === 5 && r <= 2)             tags.push('⚠️ 沈睡的高淨値戶')
-    // 中層資產活躍戶
-    if ((m === 3 || m === 4) && r >= 4) tags.push('🔥 高潛力活躍戶')
-    if ((m === 3 || m === 4) && r === 3) tags.push('📊 穩定交易戶')
-    // 預警類
-    if (m >= 3 && r === 2)               tags.push('⏰ 流失預警')
-    // 行為狀態类
-    if (u.has_deposit && !u.has_traded)  tags.push('🌱 入金未交易')
-    // 社群互動頻率：依 LINE 每週訊息數判斷（以 line_msg_count_7d 為準，100則/週為最高）
     const msgCount = u.line_msg_count_7d || 0
+
+    // 第一優先：新手待破蛋（直接回傳，不進 8 象限）
+    if (rfm_tag === '🌟 新手待破蛋') {
+      tags.push('🌟 新手待破蛋')
+      if (msgCount >= 100)     tags.push('💬 社群超高互動')
+      else if (msgCount >= 50) tags.push('💬 社群高互動')
+      else if (msgCount >= 10) tags.push('💬 社群互動中')
+      // 新手不觸發社群低互動
+      return tags
+    }
+
+    // 8 象限分眾（R/F/M 二元化：≥ 3 為高，≤ 2 為低）
+    // SDD Traceability: step3_RFM.md § 四、分眾標籤邏輯
+    const rH = r >= 3
+    const fH = f >= 3
+    const mH = m >= 3
+
+    if      ( rH &&  fH &&  mH) tags.push('👑 核心VIP')
+    else if ( rH && !fH &&  mH) tags.push('💰 資金型活躍戶')
+    else if (!rH &&  fH &&  mH) tags.push('⚡ 高淨值沉默戶')
+    else if (!rH && !fH &&  mH) tags.push('🚨 大戶流失危機')
+    else if ( rH &&  fH && !mH) tags.push('📊 活躍成長戶')
+    else if ( rH && !fH && !mH) tags.push('📉 輕倉回訪戶')
+    else if (!rH &&  fH && !mH) tags.push('🔄 老客低迷戶')
+    else                         tags.push('💤 休眠待喚醒')
+
+    // 行為疊加標籤
+    if (u.has_deposit && !u.has_traded) tags.push('🌱 入金未交易')
+
+    // 社群互動頻率（所有非新手用戶皆觸發）
     if (msgCount >= 100)     tags.push('💬 社群超高互動')
     else if (msgCount >= 50) tags.push('💬 社群高互動')
     else if (msgCount >= 10) tags.push('💬 社群互動中')
-    else if (rfm_tag !== '🌟 新手待破蛋') tags.push('🔇 社群低互動')
+    else                     tags.push('🔇 社群低互動')
+
     return tags
   }
 

@@ -63,12 +63,15 @@
 
 ---
 
-## 階段六：戰情儀表板與週報產生器
-**目標：將所有數據轉化為圖表，並解決週六開會的統整痛點。**
-- [ ] ECharts 繪製「風險偏好矩陣」散佈圖。
-- [ ] Tailwind Grid 排版首頁 4 大核心 KPI 數據卡片。
-- [ ] 開發「一鍵匯出週報」功能，轉換為 Markdown 格式。
-> **驗收標準：** 首頁圖表正常渲染；點擊匯出後可直接複製格式整齊的週報。
+## 階段六：SQLite 本機資料庫與個人時間序列架構 ✅ 已完成
+**目標：導入 WebAssembly SQLite，建立精確到單一用戶的每週歷史快照，支援後續同類群組分析。**
+- [x] 安裝 `sql.js`、`localforage`、`dayjs` 套件。
+- [x] 複製 `sql-wasm.wasm` 至 `public/`，確保 Vite dev/build 皆可正確 fetch。
+- [x] 建立 `src/database/sqlite.js`：封裝 `initDb()`、`upsertCustomer()`、`upsertWeeklyStat()`、`persistDb()`、`exportDbFile()`、`importDbFile()`。
+- [x] 定義兩張資料表：`customers`（主表快照）+ `user_weekly_stats`（每週明細，UNIQUE(uid, year_week) Upsert）。
+- [x] 在 `useCrmStore` 新增 `initDatabase()`、`syncWeeklyData()`，並在 `main.js` 應用啟動後非阻塞初始化。
+- [x] 在 `Dashboard.vue` 新增「📦 資料庫管理」卡片：每週戰情結算、備份 .sqlite、還原 .sqlite 上傳。
+> **驗收結果：** `npm run dev` 正常，Dashboard 顯示 DB 就緒狀態；點擊「每週戰情結算」可寫入週快照並持久化；備份按鈕可下載 .sqlite 二進位檔。
 
 ---
 

@@ -67,3 +67,45 @@
 - **`MainLayout.vue`**：深色側邊欄改為白底亮色主題，導覽圖示改用 Material Symbols。
 - **`Dashboard.vue`**：新增 4 大 KPI 卡片（含色彩圖示）、SVG 趨勢折線圖佔位、最近動態列表、快速入口面板；RWD 4欄 → 2欄 → 單欄。
 - **`CrmTable.vue`**：新增白底篩選卡片（搜尋框 + 分眾按鈕 + 來源切換）；表格標頭 `#f5f7fa` 底色；來源/標籤改為 inline-style Pill Badge 取代 `<el-tag>`。
+
+---
+
+## ✅ 階段六補充：SQLite 本機資料庫與個人時間序列架構（已完成 2026-03-01）
+
+### 本機持久化引擎
+- **技術棧：** `sql.js`（WebAssembly SQLite）+ `localforage`（IndexedDB 持久化）+ `dayjs`（週數計算）
+- **WASM 載入：** `sql-wasm.wasm` 置於 `public/`，透過 `locateFile: () => '/sql-wasm.wasm'` 確保 Vite dev server 與 `npm run build` 編譯環境皆可正確 fetch。
+
+### 關聯式資料表結構（1:N）
+
+```
+customers (主表 — 1)
+  uid TEXT PK | line_name | official_email | register_date
+  first_deposit_time | invite_type | text_notes | last_updated
+
+       ↕  1:N
+
+user_weekly_stats (明細表 — N)
+  id PK AUTOINCREMENT | uid TEXT | year_week TEXT
+  record_date | total_assets REAL | volume_weekly REAL
+  commission_weekly REAL | community_interaction INT
+  rfm_score INT | rfm_tag TEXT
+  UNIQUE(uid, year_week)  ← 同週重複匯入採 Upsert 覆蓋
+```
+
+### 核心 API 規格
+| 函式 | 說明 |
+|---|---|
+| `initDb()` | 載入 WASM，從 localforage 還原或建立新庫，執行 DDL |
+| `upsertCustomer(u)` | INSERT OR REPLACE 用戶最新快照 |
+| `upsertWeeklyStat(u, yearWeek)` | INSERT OR REPLACE 當週動態數據 |
+| `persistDb()` | db.export() → localforage 持久化 |
+| `exportDbFile()` | Blob 下載 .sqlite 備份 |
+| `importDbFile(buffer)` | 從 ArrayBuffer 重建資料庫並持久化 |
+| `syncWeeklyData()` | Store Action：結算當週所有用戶並持久化 |
+
+### Dashboard UI 新增功能（`src/views/Dashboard.vue`）
+- **每週戰情結算按鈕：** 呼叫 `syncWeeklyData()`，確認對話框後批次寫入 SQLite
+- **備份資料庫 (.sqlite)：** 觸發 `exportDbFile()` 下載完整二進位
+- **還原資料庫：** `<el-upload>` 接收 .sqlite 檔案，呼叫 `importDbFile()` 覆寫
+- **DB 就緒狀態顯示：** `dbReady` ref 即時顯示資料庫載入狀態

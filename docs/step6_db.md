@@ -1,45 +1,61 @@
 # 【SDD 規格驅動開發最高指導原則】(請優先且嚴格遵守)
-你現在是在「規格驅動開發 (SDD)」框架下工作的 AI 架構師。請嚴格遵守以下四點原則：
-1. **規格即真理 (Spec is Truth)：** 在撰寫任何程式碼前，必須仔細閱讀並對齊我提供的 PRD 或階段目標。所有實作必須 100% 貼合規格定義。
-2. **禁止擅自加戲 (No Hallucination/Over-engineering)：** 若 PRD 中未提及特定的 UI 元件、欄位、或錯誤處理邏輯，絕對不要自己發明或預設。若遇到規格定義模糊或技術衝突，請立即暫停並向我提出「釐清問題 (Clarification Questions)」。
-3. **雙向追蹤 (Traceability)：** 在關鍵程式碼的註解中，請標明該段邏輯是對應到 PRD 的哪一個章節。
-4. **驗收驅動 (Test-Driven by Spec)：** 開發結束前，必須拿著 PRD 的驗收標準，逐條檢查自己的程式碼是否完全達成。
+你現在是「規格驅動開發 (SDD)」框架下的 AI 架構師。請嚴格遵守以下原則：
+1. **規格即真理 (Spec is Truth)：** 所有實作必須 100% 貼合規格定義。
+2. **驗收驅動 (Test-Driven by Spec)：** 開發結束前逐條檢查是否達成要求。
 
 ---
 
-# 任務目標：ATQT CRM 系統 - 階段六 雲端資料庫與手動建檔系統 (Firebase)
+# 任務目標：ATQT CRM 系統 - 階段六 SQLite 本機資料庫與個人時間序列架構
 
-專案已完成前置的基礎建設。為了讓社群隊長「手動新增」的客戶資料（如 LINE 暱稱、信箱）能夠永久保存，並與 BingX API 數據完美整合，請執行以下階段五開發：
+為了支援後續「戰情儀表板」的高階同類群組分析與走勢圖表，並兼顧「實體檔案可攜帶性」，我們將導入 WebAssembly 版的 SQLite (`sql.js`)，並實作「精確到單一用戶」的每週歷史紀錄追蹤。
 
-## 1. 系統架構變更與 Firebase 初始化
-* 請安裝 Firebase 核心套件：執行 `npm install firebase`。
-* 在 `.env.local` 檔案中新增 Firebase 變數的佔位符（請預留 `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID` 等），讓我後續手動填寫。
-* 建立 `src/firebase/init.js`，實作 Firebase App 與 Firestore 的初始化邏輯，並匯出 `db` 實例。
+## 1. 套件安裝與環境準備
+* 執行 `npm install sql.js localforage dayjs`。
+* 配置 `sql-wasm.wasm` 於 Vite 的 `public/` 目錄中。
+* 建立 `src/database/sqlite.js` 實作資料庫初始化與 WebAssembly 載入。
 
-## 2. 定義 Firestore 資料結構 (Schema) 與 Pinia 改寫
-請修改 `src/store/` 中的客戶資料邏輯，將 Pinia 轉型為「資料整合樞紐」：
-* **資料庫結構：** 在 Firestore 中建立 `customers` collection。文件 ID (Document ID) 預設與 BingX 的 `uid` 一致。儲存欄位包含：`uid`, `email`, `line_id`, `line_name`, `contact_info`, `source`, `created_at`。
-* **`fetchCustomers` (讀取與合併)：**
-  1. 從 Firestore `customers` 讀取所有手動建檔的靜態資料。
-  2. 呼叫 BingX API 獲取最新的動態數據 (`balance`, `volume` 等)。
-  3. 在前端以 `uid` 為基準，將「Firestore 靜態資料」與「BingX API 動態數據」合併為完整的 `users` 陣列。
-* **`addCustomer` (寫入)：** 實作將前端表單資料寫入 Firestore `customers` collection 的功能。
+## 2. 定義關聯式資料表結構 (Relational Schema)
+請在資料庫初始化時，建立以下兩張核心資料表：
 
-## 3. 升級前端 UI (`src/views/CrmTable.vue`)
-* **手動建檔表單：** 在表格上方（使用 Tailwind 排版）新增「+ 手動新增客戶」的 `<el-button>`。點擊後彈出 `<el-dialog>` 與 `<el-form>`。表單需包含：UID、LINE 暱稱、LINE ID、官網信箱、聯絡方式。點擊確認後呼叫 Store 的寫入功能。
-* **表格欄位擴充：** 確保 `<el-table>` 能同步顯示 API 抓來的「交易數據」與 Firestore 讀出的「聯絡資訊」。
+### A. `customers` (主表：用戶最新狀態快照)
+* 欄位：`uid` (TEXT PRIMARY KEY), `line_name` (TEXT), `official_email` (TEXT), `register_date` (TEXT), `first_deposit_time` (TEXT), `invite_type` (TEXT), `text_notes` (TEXT), `last_updated` (TEXT)。
 
-## 4. SDD 文件同步更新 (嚴格執行)
-開發完成後，請主動更新專案的 `docs/` 文件：
-1. **修改 PRD：** 讀取並修改 `docs/ATQT_CRM_PRD_v*.md`，新增「Firebase 資料庫持久化與手動建檔模組」的架構說明，並將文件版本號遞增。
-2. **修改計畫表：** 修改 `docs/Development_Plan.md`，將本任務插入為「階段五」，原本的儀表板與部署順延為階段六與階段七。並將「階段五」標記為已完成 `[x]`。
+### B. `user_weekly_stats` (明細表：每個用戶的每週歷史紀錄)
+* 說明：儲存每個用戶在特定週數的表現，用於繪製走勢圖。
+* 欄位：
+  * `id` (INTEGER PRIMARY KEY AUTOINCREMENT)
+  * `uid` (TEXT) - 關聯至 customers 表
+  * `year_week` (TEXT) - 週數標籤 (如 '2026-W09')
+  * `record_date` (TEXT) - 匯入日期時間
+  * `total_assets` (REAL) - 當週總資產
+  * `volume_weekly` (REAL) - 當週交易量
+  * `commission_weekly` (REAL) - 當週手續費貢獻 (預留)
+  * `community_interaction` (INTEGER) - 當週社群互動次數
+  * `rfm_score` (INTEGER) - 當週 RFM 總分
+  * `rfm_tag` (TEXT) - 當週 RFM 分眾標籤 (如 '核心VIP')
+* 限制：建立聯合唯一索引 `UNIQUE(uid, year_week)`，確保同一個用戶在同一週只會有一筆紀錄（重複匯入時採 Upsert 覆蓋）。
+
+## 3. 實作「每週戰情結算」與資料庫寫入邏輯
+請在 Store 實作 `syncWeeklyData` Action：
+* 當社群隊長確認本週資料與 XLSX 匯入無誤後，可點擊觸發。
+* **邏輯：**
+  1. 取得當前週數（如 `2026-W09`）。
+  2. 遍歷當前前端狀態的所有用戶。
+  3. 執行 SQLite 的 `INSERT OR REPLACE INTO customers` 更新主表。
+  4. 執行 `INSERT OR REPLACE INTO user_weekly_stats`，將每個人的當週資產、RFM、互動度等動態數據寫入明細表。
+* **防呆自動儲存：** 寫入完畢後，呼叫 `db.export()` 並存入 `localforage`，實現瀏覽器端持久化。
+
+## 4. 實作 SQLite 實體檔案可攜式模組 (Import/Export)
+* **匯出 (Export)：** UI 新增「📥 備份資料庫 (.sqlite)」按鈕，透過 Blob 下載完整的二進位檔案。
+* **匯入 (Import)：** UI 新增 `<el-upload>` 供上傳 `.sqlite` 檔案。讀取 `ArrayBuffer` 後重新實例化資料庫並覆寫本機紀錄。
+
+## 5. SDD 文件同步更新
+1. **修改 PRD：** 將「SQLite WebAssembly 引擎」與「一對多關聯結構 (customers 1:N user_weekly_stats)」明確寫入規格。
+2. **修改計畫表：** 標記階段六已完成 `[x]`。
 
 ---
 
-## 5. 執行完畢後的輸出要求 (SDD Execution Report)
-請在完成任務後，輸出以下結構化的執行報告，以利我進行 SDD 規格驗收：
-1. **規格對照表 (Spec Traceability)：** 列出本次完成的功能，並明確標註對應到 PRD 的哪個章節。（格式：`[PRD X.X] 功能名稱 - 狀態: 完成`）
-2. **異動檔案清單 (Modified/Created Files)：** 列出建立或修改的檔案路徑。
-3. **安裝套件清單 (Dependencies)：** 若有新增安裝套件，請列出名稱與版本。
-4. **執行與驗證步驟 (Verification Steps)：** 提示我接下來應該去 Firebase Console 獲取哪些金鑰填入 `.env.local`，以及重啟伺服器後畫面應有什麼變化。
-5. **規格釐清與偏離警告 (Clarifications & Deviations)：** 若在非同步處理 (Promise.all) Firestore 讀取與 BingX API 請求時有效能或 Rate Limit 隱憂，請提出優化建議與你的替代方案。
+## 6. 執行完畢後的輸出要求 (SDD Execution Report)
+1. **異動檔案清單：** 列出修改的檔案與新建的 `sqlite.js`。
+2. **SQL 語法驗證：** 請在報告中印出你建立 `user_weekly_stats` 時使用的 `CREATE TABLE` 原始語法，讓我確認欄位都有正確建立。
+3. **WASM 載入確認：** 說明如何確保 Vite 開發與編譯環境都能抓到 `.wasm` 檔。

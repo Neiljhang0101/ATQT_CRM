@@ -1,5 +1,11 @@
 <script setup>
 import { ref } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { useCrmStore } from '../store/index.js'
+import { queryAllCustomers, queryAllWeekly } from '../database/sqlite.js'
+
+const store = useCrmStore()
+
 const kpis = ref([
   { label: '本週總交易量', value: '--', unit: 'USDT', msIcon: 'payments', color: '#409EFF', bg: '#ecf5ff' },
   { label: '活躍下線人數', value: '--', unit: '人',   msIcon: 'group',    color: '#67C23A', bg: 'rgba(103,194,58,0.1)' },
@@ -19,6 +25,88 @@ const activities = ref([
   { icon: 'warning',    color: '#F56C6C', bg: 'rgba(245,108,108,0.1)', title: '沉睡警報',     desc: '發現 7 位流失風險客戶',   time: '1h' },
   { icon: 'add_circle', color: '#67C23A', bg: 'rgba(103,194,58,0.1)',  title: '新增下線',     desc: '本週新增 12 位下線',     time: '3h' },
 ])
+
+// ── DB 管理 ─────────────────────────────────────
+const syncing = ref(false)
+
+async function handleSyncWeekly() {
+  if (!store.dbReady) {
+    ElMessage.warning('資料庫尚未就緒，請稍候…')
+    return
+  }
+  if (store.users.length === 0) {
+    ElMessage.warning('目前無客戶資料，請先同步或匯入 XLSX')
+    return
+  }
+  await ElMessageBox.confirm(
+    `確定要將目前 ${store.users.length} 位客戶的數據寫入本週 SQLite 快照嗎？`,
+    '📊 每週戰情結算',
+    { confirmButtonText: '確認結算', cancelButtonText: '取消', type: 'info' }
+  )
+  syncing.value = true
+  try {
+    const { week, count } = await store.syncWeeklyData()
+    ElMessage.success(`✅ ${week} 結算完成，共寫入 ${count} 筆紀錄`)
+    activities.value.unshift({
+      icon: 'database',
+      color: '#409EFF',
+      bg: '#ecf5ff',
+      title: '每週結算',
+      desc: `${week} 已寫入 ${count} 筆 SQLite 快照`,
+      time: '剛剛',
+    })
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error('結算失敗：' + e.message)
+  } finally {
+    syncing.value = false
+  }
+}
+
+function handleExportDb() {
+  if (!store.dbReady) { ElMessage.warning('資料庫尚未就緒'); return }
+  try {
+    store.exportDbFile()
+    ElMessage.success('已開始下載 .sqlite 備份檔')
+  } catch (e) {
+    ElMessage.error('備份失敗：' + e.message)
+  }
+}
+
+async function handleImportDb(file) {
+  try {
+    const buffer = await file.arrayBuffer()
+    await store.importDbFile(buffer)
+    ElMessage.success('✅ 資料庫已從備份檔還原')
+  } catch (e) {
+    ElMessage.error('還原失敗：' + e.message)
+  }
+  return false  // 阻止 el-upload 自動上傳
+}
+
+// ── 資料表檢視器 ────────────────────────────────
+const viewerOpen = ref(false)
+const viewerTab = ref('customers')
+const viewerCustomers = ref([])
+const viewerWeekly = ref([])
+const viewerLoading = ref(false)
+
+async function openViewer() {
+  if (!store.dbReady) { ElMessage.warning('資料庫尚未就緒，請稍候'); return }
+  viewerOpen.value = true
+  viewerLoading.value = true
+  try {
+    const [customers, weekly] = await Promise.all([
+      queryAllCustomers(),
+      queryAllWeekly(200),
+    ])
+    viewerCustomers.value = customers
+    viewerWeekly.value = weekly
+  } catch (e) {
+    ElMessage.error('查詢失敗：' + e.message)
+  } finally {
+    viewerLoading.value = false
+  }
+}
 </script>
 
 <template>
@@ -162,5 +250,126 @@ const activities = ref([
         </div>
       </div>
     </div>
+
+    <!-- ── SQLite 資料庫管理卡片 ── SDD step6_db.md § 4 ── -->
+    <div class="bg-white rounded-lg p-6" style="border:1px solid #e4e7ed;box-shadow:0 0 12px rgba(0,0,0,0.05);">
+      <div class="flex justify-between items-center mb-4">
+        <div>
+          <h3 class="text-base font-semibold" style="color:#1a1d23;">📦 資料庫管理</h3>
+          <p class="text-sm mt-0.5" style="color:#909399;">
+            SQLite 本機快照 &nbsp;·&nbsp;
+            <span :style="store.dbReady ? 'color:#67C23A;' : 'color:#F56C6C;'">
+              {{ store.dbReady ? '✅ 已就緒' : '⏳ 載入中…' }}
+            </span>
+          </p>
+        </div>
+      </div>
+      <div class="flex flex-wrap gap-3">
+        <!-- 每週結算 -->
+        <el-button
+          type="primary"
+          :loading="syncing"
+          :disabled="!store.dbReady"
+          @click="handleSyncWeekly"
+        >
+          <span class="material-symbols-outlined text-[16px] mr-1">database</span>
+          每週戰情結算
+        </el-button>
+
+        <!-- 備份 -->
+        <el-button
+          type="success"
+          :disabled="!store.dbReady"
+          @click="handleExportDb"
+        >
+          <span class="material-symbols-outlined text-[16px] mr-1">download</span>
+          備份資料庫 (.sqlite)
+        </el-button>
+
+        <!-- 還原 -->
+        <el-upload
+          :show-file-list="false"
+          accept=".sqlite,.db"
+          :before-upload="handleImportDb"
+        >
+          <el-button type="warning">
+            <span class="material-symbols-outlined text-[16px] mr-1">upload</span>
+            還原資料庫
+          </el-button>
+        </el-upload>
+
+        <!-- 檢視資料表 -->
+        <el-button
+          :disabled="!store.dbReady"
+          @click="openViewer"
+        >
+          <span class="material-symbols-outlined text-[16px] mr-1">table_view</span>
+          檢視資料表
+        </el-button>
+      </div>
+      <p class="text-xs mt-3" style="color:#909399;">
+        結算後資料自動持久化於瀏覽器（localforage）；也可下載 .sqlite 檔案隨身攜帶，下次上傳即可還原所有歷史週報。
+      </p>
+    </div>
+
+    <!-- ── 資料表檢視對話方塊 ── -->
+    <el-dialog
+      v-model="viewerOpen"
+      title="🗄️ SQLite 資料表檢視"
+      width="92%"
+      top="4vh"
+      destroy-on-close
+    >
+      <el-tabs v-model="viewerTab">
+
+        <!-- customers 主表 -->
+        <el-tab-pane label="customers（主表）" name="customers">
+          <p class="text-xs mb-3" style="color:#909399;">共 {{ viewerCustomers.length }} 筆</p>
+          <el-table
+            :data="viewerCustomers"
+            :loading="viewerLoading"
+            size="small"
+            border
+            stripe
+            max-height="420"
+            style="width:100%;font-size:12px;"
+          >
+            <el-table-column prop="uid"                label="uid"                min-width="110" fixed show-overflow-tooltip />
+            <el-table-column prop="line_name"          label="line_name"          min-width="100" show-overflow-tooltip />
+            <el-table-column prop="official_email"     label="official_email"     min-width="140" show-overflow-tooltip />
+            <el-table-column prop="register_date"      label="register_date"      min-width="100" show-overflow-tooltip />
+            <el-table-column prop="first_deposit_time" label="first_deposit_time" min-width="130" show-overflow-tooltip />
+            <el-table-column prop="invite_type"        label="invite_type"        min-width="90"  show-overflow-tooltip />
+            <el-table-column prop="text_notes"         label="text_notes"         min-width="120" show-overflow-tooltip />
+            <el-table-column prop="last_updated"       label="last_updated"       min-width="160" show-overflow-tooltip />
+          </el-table>
+        </el-tab-pane>
+
+        <!-- user_weekly_stats 明細表 -->
+        <el-tab-pane label="user_weekly_stats（週歷史）" name="weekly">
+          <p class="text-xs mb-3" style="color:#909399;">顯示最新 200 筆（依週數降冪）</p>
+          <el-table
+            :data="viewerWeekly"
+            :loading="viewerLoading"
+            size="small"
+            border
+            stripe
+            max-height="420"
+            style="width:100%;font-size:12px;"
+          >
+            <el-table-column prop="id"                    label="id"           width="60"  fixed />
+            <el-table-column prop="uid"                   label="uid"          min-width="110" show-overflow-tooltip />
+            <el-table-column prop="year_week"             label="year_week"    width="90"  />
+            <el-table-column prop="total_assets"          label="total_assets" min-width="100" show-overflow-tooltip />
+            <el-table-column prop="volume_weekly"         label="volume_weekly" min-width="110" show-overflow-tooltip />
+            <el-table-column prop="community_interaction" label="interaction"  width="80"  />
+            <el-table-column prop="rfm_score"             label="rfm_score"    width="80"  />
+            <el-table-column prop="rfm_tag"               label="rfm_tag"      min-width="100" show-overflow-tooltip />
+            <el-table-column prop="record_date"           label="record_date"  min-width="160" show-overflow-tooltip />
+          </el-table>
+        </el-tab-pane>
+
+      </el-tabs>
+    </el-dialog>
   </div>
 </template>

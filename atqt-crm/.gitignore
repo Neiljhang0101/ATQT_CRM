@@ -26,3 +26,10 @@ dist-ssr
 # 環境變數 (含 API 金鑰)
 .env.local
 .env.*.local
+
+# SQLite 本機資料庫實體檔
+server/data/*.sqlite
+server/data/*.db
+
+server/data/*.sqlite-shm
+server/data/*.sqlite-wal

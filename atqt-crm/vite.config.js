@@ -18,6 +18,11 @@ export default defineConfig({
         rewrite: path => path.replace(/^\/api\/bingx/, ''),
         secure: true,
       },
+      // SQLite Express 後端（本機開發）
+      '/api/db': {
+        target: 'http://localhost:3001',
+        changeOrigin: false,
+      },
     },
   },
 })

@@ -1,6 +1,11 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { getAgencyInvitees, getSubAccountAssets, commissionFetch, OLD_API_KEY, OLD_SECRET_KEY, NEW_API_KEY, NEW_SECRET_KEY } from '../api/bingx.js'
+import dayjs from 'dayjs'
+import isoWeek from 'dayjs/plugin/isoWeek'
+import { initDb, exportDbFile, importDbFile } from '../database/sqlite.js'
+
+dayjs.extend(isoWeek)
 
 /**
  * 客戶資料預設結構 (20 欄位)
@@ -61,6 +66,15 @@ export const useCrmStore = defineStore('crm', () => {
 
   /** @type {import('vue').Ref<string|null>} 最後同步時間 */
   const lastSyncTime = ref(null)
+
+  /** @type {import('vue').Ref<boolean>} SQLite 資料庫是否已就緒 */
+  const dbReady = ref(false)
+
+  /** 初始化 SQLite 資料庫（應用啟動時呼叫一次） */
+  async function initDatabase() {
+    await initDb()
+    dbReady.value = true
+  }
 
   // ── Getters ───────────────────────────────────
 
@@ -665,10 +679,67 @@ export const useCrmStore = defineStore('crm', () => {
     lastSyncTime.value = new Date().toLocaleString('zh-TW')
   }
 
+  /**
+   * 每週戰情結算：將前端所有用戶的當週快照寫入 SQLite
+   * SDD Traceability: step6_db.md § 3. syncWeeklyData
+   * @returns {Promise<{week: string, count: number}>}
+   */
+  async function syncWeeklyData() {
+    const yearWeek = dayjs().format('GGGG-[W]WW')   // e.g. '2026-W09'
+
+    // 組裝傳送給後端的 payload
+    const payload = users.value
+      .filter(u => u.uid)
+      .map(u => {
+        let rfmTotal = null
+        if (u.rfm_score != null) {
+          if (typeof u.rfm_score === 'object') {
+            const { r = 0, f = 0, m = 0 } = u.rfm_score
+            rfmTotal = r + f + m
+          } else {
+            rfmTotal = Number(u.rfm_score)
+          }
+        }
+        let rfmTag = u.rfm_score_tag ?? null
+        if (!rfmTag && Array.isArray(u.tags)) {
+          rfmTag = u.tags.find(t => /VIP|核心|潛力|沉睡|流失/.test(t)) ?? null
+        }
+        return {
+          uid:                  u.uid,
+          line_name:            u.line_name            ?? null,
+          official_email:       u.official_email        ?? null,
+          register_date:        u.register_date         ?? null,
+          first_deposit_time:   u.first_deposit_time    ?? null,
+          invite_type:          u.invite_type           ?? null,
+          text_notes:           u.text_notes            ?? null,
+          total_assets:         u.total_assets != null ? Number(u.total_assets) : (u.balance != null ? Number(u.balance) : null),
+          volume_weekly:        u.volume_recent != null ? Number(u.volume_recent) : (u.volume_30d != null ? Number(u.volume_30d) : null),
+          commission_weekly:    null,
+          community_interaction: u.community_interaction != null ? Number(u.community_interaction) : (u.line_msg_count_7d != null ? Number(u.line_msg_count_7d) : null),
+          rfm_score:            rfmTotal,
+          rfm_tag:              rfmTag,
+        }
+      })
+
+    const res = await fetch('/api/db/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ yearWeek, users: payload }),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.message || '[DB] 同步失敗，請確認後端伺服器運作中')
+    }
+    const data = await res.json()
+    lastSyncTime.value = new Date().toLocaleString('zh-TW')
+    return { week: yearWeek, count: data.count }
+  }
+
   return {
     users,
     loading,
     lastSyncTime,
+    dbReady,
     vipUsers,
     sleepingUsers,
     mergeUsers,
@@ -682,5 +753,9 @@ export const useCrmStore = defineStore('crm', () => {
     fetchCommissionOnly,
     fetchAssetsOnly,
     recalcRfm,
+    initDatabase,
+    syncWeeklyData,
+    exportDbFile,
+    importDbFile,
   }
 })

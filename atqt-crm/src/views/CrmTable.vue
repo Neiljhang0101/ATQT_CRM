@@ -281,19 +281,26 @@ async function handleXlsxUpload(uploadFile) {
   xlsxImporting.value = true
   try {
     const { records, fileType, accountType, count } = await parseXlsxFile(file)
+    console.log('[XLSX] 解析結果:', { fileType, accountType, count, 樣本: records.slice(0, 2) })
     if (count === 0) {
-      ElMessage.warning('檔案類型為空，請確認選擇是否正確')
+      ElMessage.warning('檔案類型発現為空，請確認選擇是否正確')
       return
     }
-    const { importedCount, updatedCount } = crmStore.importXlsxRecords(records)
+    const { importedCount, updatedCount, dbSynced, dbError } = await crmStore.importXlsxRecords(records)
     const typeLabel = fileType === 'user-info' ? '用戶資料'
       : fileType === 'volume' ? '交易量'
-      : fileType === 'account-tv' ? '官網信箱/TVID'
+      : fileType === 'account-tv' ? '官網信算/TVID'
       : fileType === 'line-names' ? 'LINE名稱'
       : fileType === 'mixed' ? '官網帳號+LINE名稱'
       : '未知類型'
     const accLabel = accountType === 'old' ? '舊帳號' : accountType === 'new' ? '新帳號' : '未知帳號'
-    ElMessage.success(`${file.name}（${typeLabel} - ${accLabel}）匯入完成：新增 ${importedCount} 筆 / 更新 ${updatedCount} 筆`)
+    const inGroupCount = records.filter(r => r.in_advanced_group).length
+    const groupHint = inGroupCount > 0 ? `（其中 ${inGroupCount} 位在進階群）` : '（無進階群欄位，已自動顯示所有）'
+    const dbHint = !crmStore.dbReady ? '⚠️資料庫未就緒，請確認後端已啟動' : ''
+    ElMessage({ message: `${file.name}（${typeLabel} - ${accLabel}${groupHint}）匯入完成：新增 ${importedCount} 筆 / 更新 ${updatedCount} 筆${dbHint ? ' | ' + dbHint : ''}`, type: importedCount + updatedCount > 0 ? 'success' : 'warning', duration: 6000 })
+    if (dbError) {
+      ElNotification({ title: '資料庫儲存失敗', type: 'warning', message: `資料已匯入記憶體，但儲空 SQLite 失敗：${dbError}。請確認後端服務們在線後重新按『每週戰情結算』。`, duration: 0 })
+    }
   } catch (err) {
     ElNotification({ title: 'XLSX 匯入失敗', type: 'error', message: err.message, duration: 0 })
   } finally {
@@ -310,17 +317,21 @@ async function handleLineChatUpload(uploadFile) {
   lineImporting.value = true
   try {
     const { weeklyStats, nickMap, summary } = await parseLineChatXlsx(file)
+    console.log('[LINE匯入] 解析結果:', { totalMessages: summary.totalMessages, uniqueUsers: summary.uniqueUsers, weeks: summary.weeks })
     if (summary.totalMessages === 0) {
-      ElMessage.warning('未找到有效訊息，請確認是 LINE對話匯出 xlsx 格式')
+      ElMessage({ message: `${file.name} 未解析到任何訊息，請開啟 F12 Console 查看詳細原因（可能是欄位名稱不符或日期格式問題）`, type: 'warning', duration: 0 })
       return
     }
-    const { updatedCount, newCount, nickUpdated } = crmStore.importLineChatRecords(weeklyStats, nickMap)
+    const { updatedCount, newCount, nickUpdated, dbSynced, dbError } = await crmStore.importLineChatRecords(weeklyStats, nickMap)
     ElMessage.success(
       `${file.name} 匯入完成：` +
       `有效訊息 ${summary.totalMessages.toLocaleString()} 則 / ` +
-      `涵蓋 ${summary.weeks.length} 週 / ` +
-      `更新 ${updatedCount} 人 / 新建 ${newCount} 人 / 暱稱更新 ${nickUpdated} 人`
+      `涵蓋 ${summary.weeks.length} 週（${summary.weeks[0] ?? ''} ~ ${summary.weeks[summary.weeks.length - 1] ?? ''}）/ ` +
+      `更新 ${updatedCount} 人 / 新建 ${newCount} 人 / 昵稱更新 ${nickUpdated} 人`
     )
+    if (dbError) {
+      ElNotification({ title: '資料庫儲存失敗', type: 'warning', message: `資料已匯入記憶體，但儲空 SQLite 失敗：${dbError}。請確認後端服務們在線後重新按『每週戰情結算』。`, duration: 0 })
+    }
   } catch (err) {
     ElNotification({ title: 'LINE 對話匯入失敗', type: 'error', message: err.message, duration: 0 })
   } finally {

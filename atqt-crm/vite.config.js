@@ -9,6 +9,10 @@ export default defineConfig({
     tailwindcss(),
   ],
   server: {
+    host: '0.0.0.0',
+    port: 5173,
+    strictPort: true,
+    allowedHosts: true,
     proxy: {
       // 將所有 /api/bingx 開頭的請求轉發至 BingX Open API
       // 解決本機端開發的 CORS 跨網域問題

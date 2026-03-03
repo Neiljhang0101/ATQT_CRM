@@ -64,6 +64,23 @@ export function exportDbFile() {
 // ── 匯入備份 ───────────────────────────────────────────────────────────────
 
 /**
+ * 批次寫入 LINE 對話歷史週訊息數（不覆蓋其他週期欄位）
+ * @param {Array<{uid: string, year_week: string, line_msg_count: number}>} records
+ */
+export async function syncLineMsgHistory(records) {
+  const res = await fetch('/api/db/sync-line-msgs', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ records }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.message || 'LINE 歷史訊息同步失敗')
+  }
+  return res.json()
+}
+
+/**
  * 上傳 .sqlite 檔案至後端還原
  * @param {ArrayBuffer} buffer
  */

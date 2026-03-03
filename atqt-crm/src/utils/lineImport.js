@@ -19,12 +19,26 @@ import * as XLSX from 'xlsx'
 
 /**
  * 取得週次 key，格式 "YYYY-MM-DD"（該週週日的日期，週日起、週六止）
- * @param {string} dateStr "YYYY-MM-DD"
+ * 支援：
+ *   - "YYYY-MM-DD" / "YYYY/MM/DD" 字串
+ *   - JavaScript Date 物件
+ *   - Excel 日期序號（正整數 > 20000）
+ * @param {string|number|Date} dateVal
  * @returns {string|null}
  */
-export function getISOWeekKey(dateStr) {
-  const d = new Date(dateStr + 'T00:00:00Z')
-  if (isNaN(d.getTime())) return null
+export function getISOWeekKey(dateVal) {
+  let d
+  if (dateVal instanceof Date) {
+    d = new Date(Date.UTC(dateVal.getFullYear(), dateVal.getMonth(), dateVal.getDate()))
+  } else if (typeof dateVal === 'number' && dateVal > 20000) {
+    // Excel 日期序號：1 = 1900-01-01
+    d = new Date(Math.round((dateVal - 25569) * 86400 * 1000))
+  } else {
+    const s = String(dateVal).trim().replace(/\//g, '-')
+    if (!/^\d{4}-\d{1,2}-\d{1,2}/.test(s)) return null
+    d = new Date(s.slice(0, 10) + 'T00:00:00Z')
+  }
+  if (!d || isNaN(d.getTime())) return null
   const dow = d.getUTCDay() // 0=週日, 6=週六
   d.setUTCDate(d.getUTCDate() - dow) // 退到該週週日
   return d.toISOString().slice(0, 10)
@@ -62,7 +76,7 @@ export function parseLineChatXlsx(file) {
     const reader = new FileReader()
     reader.onload = (e) => {
       try {
-        const wb = XLSX.read(e.target.result, { type: 'array' })
+        const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true })
 
         /** @type {{ uid: string, week: string, nick: string|null }[]} */
         const allEntries = []
@@ -76,7 +90,12 @@ export function parseLineChatXlsx(file) {
           const headers = rows[0].map(h => h !== null ? String(h).trim() : '')
           const idxDate    = headers.findIndex(h => h === '日期')
           const idxSpeaker = headers.findIndex(h => h === '發言者暱稱')
-          if (idxDate < 0 || idxSpeaker < 0) continue  // 不是 LINE 對話格式，略過
+          if (idxDate < 0 || idxSpeaker < 0) {
+            console.warn(`[LINE匯入] Sheet "${sheetName}" 缺少欄位，現有欄位：`, headers.filter(h=>h).join(' | '))
+            continue  // 不是 LINE 對話格式，略過
+          }
+
+          let sheetRows = 0, skippedDate = 0, skippedSpeaker = 0
 
           for (let i = 1; i < rows.length; i++) {
             const row = rows[i]
@@ -85,15 +104,16 @@ export function parseLineChatXlsx(file) {
             const speakerVal = row[idxSpeaker]
             if (!dateVal || !speakerVal) continue
 
-            const dateStr = String(dateVal).trim()
-            const week    = getISOWeekKey(dateStr)
-            if (!week) continue
+            const week = getISOWeekKey(dateVal)
+            if (!week) { skippedDate++; continue }
 
             const { uid, nick } = parseSpeaker(speakerVal)
-            if (!uid) continue  // 非 UID 發言者（工作人員帳號等）略過
+            if (!uid) { sheetRows++; skippedSpeaker++; continue }
 
+            sheetRows++
             allEntries.push({ uid, week, nick })
           }
+          console.log(`[LINE匯入] Sheet "${sheetName}":有效 ${sheetRows} 行，日期無效跳過 ${skippedDate}，非客戶發言跳過 ${skippedSpeaker}`)
         }
 
         // ── 彙整每週統計 ──

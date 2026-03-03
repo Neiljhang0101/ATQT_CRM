@@ -6,7 +6,7 @@
 
 import express from 'express'
 import { createReadStream, statSync } from 'fs'
-import { syncUsers, getAllCustomers, getAllWeekly, getUserWeeklyHistory, getDbPath } from './db.js'
+import { syncUsers, syncLineMsgHistory, getAllCustomers, getAllWeekly, getUserWeeklyHistory, getDbPath } from './db.js'
 
 const app = express()
 const PORT = 3001
@@ -43,7 +43,21 @@ app.post('/api/db/sync', (req, res) => {
     res.status(500).json({ ok: false, message: e.message })
   }
 })
-
+// ── LINE 對話歷史週訊息數批次寫入 ──────────────
+app.post('/api/db/sync-line-msgs', (req, res) => {
+  try {
+    const { records } = req.body
+    if (!Array.isArray(records)) {
+      return res.status(400).json({ ok: false, message: '缺少 records 陣列' })
+    }
+    const count = syncLineMsgHistory(records)
+    console.log(`[DB] LINE 歷史同步完成：${count} 筆`)
+    res.json({ ok: true, count })
+  } catch (e) {
+    console.error('[DB] sync-line-msgs error:', e)
+    res.status(500).json({ ok: false, message: e.message })
+  }
+})
 // ── 查詢客戶主表 ───────────────────────────────
 app.get('/api/db/customers', (req, res) => {
   try {

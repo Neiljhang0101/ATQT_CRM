@@ -3,7 +3,7 @@ import { ref, computed } from 'vue'
 import { getAgencyInvitees, getSubAccountAssets, commissionFetch, OLD_API_KEY, OLD_SECRET_KEY, NEW_API_KEY, NEW_SECRET_KEY } from '../api/bingx.js'
 import dayjs from 'dayjs'
 import isoWeek from 'dayjs/plugin/isoWeek'
-import { initDb, exportDbFile, importDbFile } from '../database/sqlite.js'
+import { initDb, exportDbFile, importDbFile, queryAllCustomers, queryAllWeekly, syncLineMsgHistory } from '../database/sqlite.js'
 
 dayjs.extend(isoWeek)
 
@@ -74,6 +74,60 @@ export const useCrmStore = defineStore('crm', () => {
   async function initDatabase() {
     await initDb()
     dbReady.value = true
+    // 啟動時從 DB 恢復客戶資料（僅在 store 為空時才載入，避免覆蓋剛匯入的資料）
+    try {
+      const [customers, weekly] = await Promise.all([
+        queryAllCustomers(),
+        queryAllWeekly(5000),
+      ])
+      if (customers.length > 0 && users.value.length === 0) {
+        // 建立 uid → 最新週資料 Map
+        const weeklyMap = {}
+        for (const w of weekly) {
+          if (!weeklyMap[w.uid] || w.year_week > weeklyMap[w.uid].year_week) {
+            weeklyMap[w.uid] = w
+          }
+        }
+        users.value = customers.map(c => createDefaultUser({
+          ...c,
+          in_advanced_group:     c.in_advanced_group === 1 || c.in_advanced_group === true,
+          has_traded:            c.has_traded === 1 || c.has_traded === true,
+          has_deposit:           c.has_deposit === 1 || c.has_deposit === true,
+          kyc:                   c.kyc === 1 || c.kyc === true,
+          account_type:          c.account_type          ?? null,
+          source:                c.account_type          ?? null,
+          last_trade_date:       c.last_trade_date        ?? null,
+          last_active_date:      c.last_active_date       ?? null,
+          bingx_vip_level:       c.bingx_vip_level        ?? null,
+          tradingview_account:   c.tradingview_account    ?? null,
+          bingx_register_date:   c.bingx_register_date    ?? null,
+          inviter_uid_code:      c.inviter_uid_code       ?? null,
+          inviter_line_name:     c.inviter_line_name      ?? null,
+          line_display_name:     c.line_display_name      ?? null,
+          bound_invite_code:     c.bound_invite_code      ?? null,
+          own_promo_code:        c.own_promo_code         ?? null,
+          indicator_version:     c.indicator_version      ?? null,
+          note_tags:             (() => { try { return c.note_tags ? JSON.parse(c.note_tags) : [] } catch { return [] } })(),
+          balance:               weeklyMap[c.uid]?.total_assets         ?? null,
+          total_assets:          weeklyMap[c.uid]?.total_assets         ?? null,
+          volume_recent:         weeklyMap[c.uid]?.volume_weekly        ?? null,
+          trade_count_30d:       weeklyMap[c.uid]?.trade_count_30d      ?? 0,
+          line_msg_count_7d:     weeklyMap[c.uid]?.line_msg_count       ?? 0,
+          community_interaction: weeklyMap[c.uid]?.community_interaction ?? null,
+          rfm_score_tag:         weeklyMap[c.uid]?.rfm_tag              ?? null,
+        }))
+        // 重算 RFM
+        users.value = users.value.map(u => {
+          const { r, rfm_tag } = calcRScore(u)
+          const f = calcFScore(u.line_msg_count_7d, u.trade_count_30d)
+          const m = calcMScore(u.balance, u.volume_recent ?? u.volume_30d)
+          return { ...u, rfm_score: { r, f, m }, tags: calcTags(u, r, f, m, rfm_tag) }
+        })
+        console.log(`[DB] 已從資料庫恢復 ${customers.length} 位客戶資料`)
+      }
+    } catch (e) {
+      console.warn('[DB] 啟動載入失敗:', e.message)
+    }
   }
 
   // ── Getters ───────────────────────────────────
@@ -419,6 +473,9 @@ export const useCrmStore = defineStore('crm', () => {
       : []
 
     mergeUsers(merged)
+    if (dbReady.value) {
+      syncWeeklyData().catch(e => console.warn('[DB] 自動同步失敗:', e.message))
+    }
     return merged.length
   }
 
@@ -427,7 +484,7 @@ export const useCrmStore = defineStore('crm', () => {
    * SDD Traceability: step5_create_mb.md § 2. 合併邏輯
    * @param {Array} records - parseXlsxFile 回傳的 records
    */
-  function importXlsxRecords(records) {
+  async function importXlsxRecords(records) {
     let importedCount = 0
     let updatedCount = 0
 
@@ -450,10 +507,17 @@ export const useCrmStore = defineStore('crm', () => {
         const merged = { ...current }
         for (const [key, val] of Object.entries(incoming)) {
           if (val !== null && val !== undefined && val !== '') {
-            if (key === 'note_tags' && Array.isArray(val) && val.length > 0) {
-              // 合併標籤，去重
-              const existing = Array.isArray(merged.note_tags) ? merged.note_tags : []
-              merged.note_tags = [...new Set([...existing, ...val])]
+            if (key === 'note_tags') {
+              // 只有非空陣列才合併，空陣列不清掉既有標籤
+              if (Array.isArray(val) && val.length > 0) {
+                const existing = Array.isArray(merged.note_tags) ? merged.note_tags : []
+                merged.note_tags = [...new Set([...existing, ...val])]
+              }
+            } else if (key === 'in_advanced_group') {
+              // false 不覆蓋已是 true 的值（進入群組後以人工移除為主）
+              if (val === true || merged.in_advanced_group !== true) {
+                merged[key] = val
+              }
             } else {
               merged[key] = val
             }
@@ -488,7 +552,19 @@ export const useCrmStore = defineStore('crm', () => {
       return { ...u, rfm_score: { r, f, m }, tags: calcTags(u, r, f, m, rfm_tag) }
     })
     lastSyncTime.value = new Date().toLocaleString('zh-TW')
-    return { importedCount, updatedCount }
+    // 匯入後自動同步到 SQLite
+    let dbSynced = false
+    let dbError = null
+    if (dbReady.value) {
+      try {
+        await syncWeeklyData()
+        dbSynced = true
+      } catch (e) {
+        dbError = e.message
+        console.warn('[DB] 自動同步失敗:', e.message)
+      }
+    }
+    return { importedCount, updatedCount, dbSynced, dbError }
   }
 
   /**
@@ -497,7 +573,7 @@ export const useCrmStore = defineStore('crm', () => {
    * @param {Object} nickMap      uid → latestNickname（LINE 對話內最後出現的暱稱）
    * @returns {{ updatedCount: number, newCount: number, nickUpdated: number }}
    */
-  function importLineChatRecords(weeklyStats, nickMap) {
+  async function importLineChatRecords(weeklyStats, nickMap) {
     let updatedCount = 0
     let newCount = 0
     let nickUpdated = 0
@@ -550,7 +626,30 @@ export const useCrmStore = defineStore('crm', () => {
       return { ...u, rfm_score: { r, f, m }, tags: calcTags(u, r, f, m, rfm_tag) }
     })
     lastSyncTime.value = new Date().toLocaleString('zh-TW')
-    return { updatedCount, newCount, nickUpdated }
+    if (dbReady.value) {
+      let dbSynced = false
+      let dbError = null
+      try {
+        // 1. 同步目前週整體資料
+        await syncWeeklyData()
+        // 2. 同步 LINE 對話所有歷史週訊息數（走勢圖用）
+        const lineMsgRecords = []
+        for (const [uid, weekData] of Object.entries(weeklyStats)) {
+          for (const [year_week, line_msg_count] of Object.entries(weekData)) {
+            lineMsgRecords.push({ uid, year_week, line_msg_count })
+          }
+        }
+        if (lineMsgRecords.length > 0) {
+          await syncLineMsgHistory(lineMsgRecords)
+        }
+        dbSynced = true
+      } catch (e) {
+        dbError = e.message
+        console.warn('[DB] 自動同步失敗:', e.message)
+      }
+      return { updatedCount, newCount, nickUpdated, dbSynced, dbError }
+    }
+    return { updatedCount, newCount, nickUpdated, dbSynced: false, dbError: null }
   }
 
   // ── 三支獨立同步 action ─────────────────────────────────────────
@@ -585,6 +684,9 @@ export const useCrmStore = defineStore('crm', () => {
     })
     mergeUsers(merged)
     lastSyncTime.value = new Date().toLocaleString('zh-TW')
+    if (dbReady.value) {
+      syncWeeklyData().catch(e => console.warn('[DB] 自動同步失敗:', e.message))
+    }
     return merged.length
   }
 
@@ -620,6 +722,9 @@ export const useCrmStore = defineStore('crm', () => {
     }))
     mergeUsers(merged)
     lastSyncTime.value = new Date().toLocaleString('zh-TW')
+    if (dbReady.value) {
+      syncWeeklyData().catch(e => console.warn('[DB] 自動同步失敗:', e.message))
+    }
     return merged.length
   }
 
@@ -638,6 +743,9 @@ export const useCrmStore = defineStore('crm', () => {
       .filter(item => item.uid)
     mergeUsers(merged)
     lastSyncTime.value = new Date().toLocaleString('zh-TW')
+    if (dbReady.value) {
+      syncWeeklyData().catch(e => console.warn('[DB] 自動同步失敗:', e.message))
+    }
     return merged.length
   }
 
@@ -707,14 +815,33 @@ export const useCrmStore = defineStore('crm', () => {
         return {
           uid:                  u.uid,
           line_name:            u.line_name            ?? null,
+          line_display_name:    u.line_display_name    ?? null,
           official_email:       u.official_email        ?? null,
           register_date:        u.register_date         ?? null,
           first_deposit_time:   u.first_deposit_time    ?? null,
           invite_type:          u.invite_type           ?? null,
+          inviter_line_name:    u.inviter_line_name     ?? null,
           text_notes:           u.text_notes            ?? null,
+          indicator_version:    u.indicator_version     ?? null,
+          last_active_date:     u.last_active_date      ?? null,
+          in_advanced_group:    u.in_advanced_group ?? false,
+          has_traded:           u.has_traded        ?? false,
+          has_deposit:          u.has_deposit       ?? false,
+          kyc:                  u.kyc               ?? false,
+          account_type:         u.account_type      ?? null,
+          last_trade_date:      u.last_trade_date    ?? null,
+          bingx_vip_level:      u.bingx_vip_level   ?? null,
+          tradingview_account:  u.tradingview_account ?? null,
+          bingx_register_date:  u.bingx_register_date ?? null,
+          inviter_uid_code:     u.inviter_uid_code   ?? null,
+          bound_invite_code:    u.bound_invite_code  ?? null,
+          own_promo_code:       u.own_promo_code     ?? null,
+          note_tags:            Array.isArray(u.note_tags) && u.note_tags.length > 0 ? u.note_tags : null,
           total_assets:         u.total_assets != null ? Number(u.total_assets) : (u.balance != null ? Number(u.balance) : null),
           volume_weekly:        u.volume_recent != null ? Number(u.volume_recent) : (u.volume_30d != null ? Number(u.volume_30d) : null),
           commission_weekly:    null,
+          trade_count_30d:      u.trade_count_30d != null ? Number(u.trade_count_30d) : null,
+          line_msg_count:       u.line_msg_count_7d != null ? Number(u.line_msg_count_7d) : null,
           community_interaction: u.community_interaction != null ? Number(u.community_interaction) : (u.line_msg_count_7d != null ? Number(u.line_msg_count_7d) : null),
           rfm_score:            rfmTotal,
           rfm_tag:              rfmTag,

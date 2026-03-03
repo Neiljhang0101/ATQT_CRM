@@ -136,7 +136,8 @@ function parseSheet(rows, fileType, accountType) {
       record.note_tags = remark ? [String(remark)] : []
 
       if (record.total_assets !== undefined) {
-        record.total_assets = parseFloat(record.total_assets) || 0
+        const parsed = parseFloat(record.total_assets)
+        record.total_assets = !isNaN(parsed) && parsed > 0 ? parsed : null
       }
       // Excel 日期欄位序號轉換
       if (record.first_deposit_time !== undefined) {
@@ -171,7 +172,8 @@ function parseSheet(rows, fileType, accountType) {
       else continue
 
       if (record.volume_recent !== undefined) {
-        record.volume_recent = parseFloat(record.volume_recent) || 0
+        const parsed = parseFloat(record.volume_recent)
+        record.volume_recent = !isNaN(parsed) && parsed > 0 ? parsed : null
       }
       records.push(record)
 

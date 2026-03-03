@@ -21,14 +21,31 @@ db.pragma('journal_mode = WAL')   // 寫入效能優化
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS customers (
-  uid               TEXT PRIMARY KEY,
-  line_name         TEXT,
-  official_email    TEXT,
-  register_date     TEXT,
-  first_deposit_time TEXT,
-  invite_type       TEXT,
-  text_notes        TEXT,
-  last_updated      TEXT
+  uid                 TEXT PRIMARY KEY,
+  line_name           TEXT,
+  line_display_name   TEXT,
+  official_email      TEXT,
+  register_date       TEXT,
+  first_deposit_time  TEXT,
+  invite_type         TEXT,
+  inviter_line_name   TEXT,
+  text_notes          TEXT,
+  indicator_version   TEXT,
+  last_updated        TEXT,
+  last_active_date    TEXT,
+  in_advanced_group   INTEGER DEFAULT 0,
+  has_traded          INTEGER DEFAULT 0,
+  has_deposit         INTEGER DEFAULT 0,
+  kyc                 INTEGER DEFAULT 0,
+  account_type        TEXT,
+  last_trade_date     TEXT,
+  bingx_vip_level     TEXT,
+  tradingview_account TEXT,
+  note_tags           TEXT,
+  bingx_register_date TEXT,
+  inviter_uid_code    TEXT,
+  bound_invite_code   TEXT,
+  own_promo_code      TEXT
 );
 
 CREATE TABLE IF NOT EXISTS user_weekly_stats (
@@ -39,6 +56,8 @@ CREATE TABLE IF NOT EXISTS user_weekly_stats (
   total_assets         REAL,
   volume_weekly        REAL,
   commission_weekly    REAL,
+  trade_count_30d      INTEGER,
+  line_msg_count       INTEGER,
   community_interaction INTEGER,
   rfm_score            INTEGER,
   rfm_tag              TEXT,
@@ -48,25 +67,87 @@ CREATE TABLE IF NOT EXISTS user_weekly_stats (
 CREATE INDEX IF NOT EXISTS idx_uws_uid ON user_weekly_stats(uid);
 `)
 
+// Migration: 舊 DB 若缺少欄位就補上
+// customers 欄位 migration
+try { db.exec(`ALTER TABLE customers ADD COLUMN in_advanced_group INTEGER DEFAULT 0`)   ; console.log('[DB] Migration: 已新增 in_advanced_group')   } catch (_) {}
+try { db.exec(`ALTER TABLE customers ADD COLUMN account_type TEXT`)                      ; console.log('[DB] Migration: 已新增 account_type')          } catch (_) {}
+try { db.exec(`ALTER TABLE customers ADD COLUMN last_trade_date TEXT`)                   ; console.log('[DB] Migration: 已新增 last_trade_date')        } catch (_) {}
+try { db.exec(`ALTER TABLE customers ADD COLUMN bingx_vip_level TEXT`)                  ; console.log('[DB] Migration: 已新增 bingx_vip_level')       } catch (_) {}
+try { db.exec(`ALTER TABLE customers ADD COLUMN tradingview_account TEXT`)               ; console.log('[DB] Migration: 已新增 tradingview_account')   } catch (_) {}
+try { db.exec(`ALTER TABLE customers ADD COLUMN note_tags TEXT`)                         ; console.log('[DB] Migration: 已新增 note_tags')             } catch (_) {}
+try { db.exec(`ALTER TABLE customers ADD COLUMN bingx_register_date TEXT`)               ; console.log('[DB] Migration: 已新增 bingx_register_date')  } catch (_) {}
+try { db.exec(`ALTER TABLE customers ADD COLUMN inviter_uid_code TEXT`)                  ; console.log('[DB] Migration: 已新增 inviter_uid_code')     } catch (_) {}
+try { db.exec(`ALTER TABLE customers ADD COLUMN bound_invite_code TEXT`)                 ; console.log('[DB] Migration: 已新增 bound_invite_code')    } catch (_) {}
+try { db.exec(`ALTER TABLE customers ADD COLUMN own_promo_code TEXT`)                    ; console.log('[DB] Migration: 已新增 own_promo_code')       } catch (_) {}
+try { db.exec(`ALTER TABLE customers ADD COLUMN line_display_name TEXT`)                 ; console.log('[DB] Migration: 已新增 line_display_name')   } catch (_) {}
+try { db.exec(`ALTER TABLE customers ADD COLUMN inviter_line_name TEXT`)                 ; console.log('[DB] Migration: 已新增 inviter_line_name')   } catch (_) {}
+try { db.exec(`ALTER TABLE customers ADD COLUMN indicator_version TEXT`)                 ; console.log('[DB] Migration: 已新增 indicator_version')   } catch (_) {}
+try { db.exec(`ALTER TABLE customers ADD COLUMN last_active_date TEXT`)                  ; console.log('[DB] Migration: 已新增 last_active_date')    } catch (_) {}
+try { db.exec(`ALTER TABLE customers ADD COLUMN has_traded INTEGER DEFAULT 0`)           ; console.log('[DB] Migration: 已新增 has_traded')          } catch (_) {}
+try { db.exec(`ALTER TABLE customers ADD COLUMN has_deposit INTEGER DEFAULT 0`)          ; console.log('[DB] Migration: 已新增 has_deposit')         } catch (_) {}
+try { db.exec(`ALTER TABLE customers ADD COLUMN kyc INTEGER DEFAULT 0`)                  ; console.log('[DB] Migration: 已新增 kyc')                 } catch (_) {}
+// user_weekly_stats 欄位 migration
+try { db.exec(`ALTER TABLE user_weekly_stats ADD COLUMN trade_count_30d INTEGER`)        ; console.log('[DB] Migration: 已新增 weekly.trade_count_30d') } catch (_) {}
+try { db.exec(`ALTER TABLE user_weekly_stats ADD COLUMN line_msg_count INTEGER`)         ; console.log('[DB] Migration: 已新增 weekly.line_msg_count')  } catch (_) {}
+
 console.log(`[DB] SQLite 已連線：${DB_PATH}`)
 
 // ── Prepared Statements ────────────────────────
 const stmtUpsertCustomer = db.prepare(`
-  INSERT OR REPLACE INTO customers
-    (uid, line_name, official_email, register_date, first_deposit_time,
-     invite_type, text_notes, last_updated)
+  INSERT INTO customers
+    (uid, line_name, line_display_name, official_email, register_date, first_deposit_time,
+     invite_type, inviter_line_name, text_notes, indicator_version, last_updated,
+     last_active_date, in_advanced_group, has_traded, has_deposit, kyc,
+     account_type, last_trade_date, bingx_vip_level, tradingview_account,
+     note_tags, bingx_register_date, inviter_uid_code, bound_invite_code, own_promo_code)
   VALUES
-    (@uid, @line_name, @official_email, @register_date, @first_deposit_time,
-     @invite_type, @text_notes, @last_updated)
+    (@uid, @line_name, @line_display_name, @official_email, @register_date, @first_deposit_time,
+     @invite_type, @inviter_line_name, @text_notes, @indicator_version, @last_updated,
+     @last_active_date, @in_advanced_group, @has_traded, @has_deposit, @kyc,
+     @account_type, @last_trade_date, @bingx_vip_level, @tradingview_account,
+     @note_tags, @bingx_register_date, @inviter_uid_code, @bound_invite_code, @own_promo_code)
+  ON CONFLICT(uid) DO UPDATE SET
+    line_name           = COALESCE(@line_name, line_name),
+    line_display_name   = COALESCE(@line_display_name, line_display_name),
+    official_email      = COALESCE(@official_email, official_email),
+    register_date       = COALESCE(@register_date, register_date),
+    first_deposit_time  = COALESCE(@first_deposit_time, first_deposit_time),
+    invite_type         = COALESCE(@invite_type, invite_type),
+    inviter_line_name   = COALESCE(@inviter_line_name, inviter_line_name),
+    text_notes          = COALESCE(@text_notes, text_notes),
+    indicator_version   = COALESCE(@indicator_version, indicator_version),
+    last_updated        = @last_updated,
+    last_active_date    = CASE WHEN @last_active_date > last_active_date OR last_active_date IS NULL THEN @last_active_date ELSE last_active_date END,
+    in_advanced_group   = CASE WHEN @in_advanced_group = 1 THEN 1 ELSE in_advanced_group END,
+    has_traded          = CASE WHEN @has_traded = 1 THEN 1 ELSE has_traded END,
+    has_deposit         = CASE WHEN @has_deposit = 1 THEN 1 ELSE has_deposit END,
+    kyc                 = CASE WHEN @kyc = 1 THEN 1 ELSE kyc END,
+    account_type        = COALESCE(@account_type, account_type),
+    last_trade_date     = CASE WHEN @last_trade_date > last_trade_date OR last_trade_date IS NULL THEN @last_trade_date ELSE last_trade_date END,
+    bingx_vip_level     = COALESCE(@bingx_vip_level, bingx_vip_level),
+    tradingview_account = COALESCE(@tradingview_account, tradingview_account),
+    note_tags           = COALESCE(@note_tags, note_tags),
+    bingx_register_date = COALESCE(@bingx_register_date, bingx_register_date),
+    inviter_uid_code    = COALESCE(@inviter_uid_code, inviter_uid_code),
+    bound_invite_code   = COALESCE(@bound_invite_code, bound_invite_code),
+    own_promo_code      = COALESCE(@own_promo_code, own_promo_code)
 `)
 
 const stmtUpsertWeekly = db.prepare(`
   INSERT OR REPLACE INTO user_weekly_stats
     (uid, year_week, record_date, total_assets, volume_weekly, commission_weekly,
-     community_interaction, rfm_score, rfm_tag)
+     trade_count_30d, line_msg_count, community_interaction, rfm_score, rfm_tag)
   VALUES
     (@uid, @year_week, @record_date, @total_assets, @volume_weekly, @commission_weekly,
-     @community_interaction, @rfm_score, @rfm_tag)
+     @trade_count_30d, @line_msg_count, @community_interaction, @rfm_score, @rfm_tag)
+`)
+
+// 單獨更新指定 uid+week 的 LINE 訊息數（LINE 對話歷史批次寫入）
+const stmtUpsertLineMsgWeek = db.prepare(`
+  INSERT INTO user_weekly_stats (uid, year_week, record_date, line_msg_count)
+  VALUES (@uid, @year_week, @record_date, @line_msg_count)
+  ON CONFLICT(uid, year_week) DO UPDATE SET
+    line_msg_count = @line_msg_count
 `)
 
 // ── 批次同步（Transaction） ────────────────────
@@ -77,13 +158,30 @@ export const syncUsers = db.transaction((yearWeek, users) => {
     if (!u.uid) continue
     stmtUpsertCustomer.run({
       uid:                u.uid,
-      line_name:          u.line_name          ?? null,
-      official_email:     u.official_email      ?? null,
-      register_date:      u.register_date       ?? null,
-      first_deposit_time: u.first_deposit_time  ?? null,
-      invite_type:        u.invite_type         ?? null,
-      text_notes:         u.text_notes          ?? null,
+      line_name:          u.line_name           ?? null,
+      line_display_name:  u.line_display_name   ?? null,
+      official_email:     u.official_email       ?? null,
+      register_date:      u.register_date        ?? null,
+      first_deposit_time: u.first_deposit_time   ?? null,
+      invite_type:        u.invite_type          ?? null,
+      inviter_line_name:  u.inviter_line_name    ?? null,
+      text_notes:         u.text_notes           ?? null,
+      indicator_version:  u.indicator_version    ?? null,
       last_updated:       now,
+      last_active_date:   u.last_active_date     ?? null,
+      in_advanced_group:  u.in_advanced_group    ? 1 : 0,
+      has_traded:         u.has_traded           ? 1 : 0,
+      has_deposit:        u.has_deposit          ? 1 : 0,
+      kyc:                u.kyc                  ? 1 : 0,
+      account_type:       u.account_type         ?? null,
+      last_trade_date:    u.last_trade_date       ?? null,
+      bingx_vip_level:    u.bingx_vip_level      ?? null,
+      tradingview_account: u.tradingview_account  ?? null,
+      note_tags:          Array.isArray(u.note_tags) && u.note_tags.length > 0 ? JSON.stringify(u.note_tags) : null,
+      bingx_register_date: u.bingx_register_date ?? null,
+      inviter_uid_code:   u.inviter_uid_code     ?? null,
+      bound_invite_code:  u.bound_invite_code    ?? null,
+      own_promo_code:     u.own_promo_code       ?? null,
     })
     stmtUpsertWeekly.run({
       uid:                  u.uid,
@@ -92,9 +190,31 @@ export const syncUsers = db.transaction((yearWeek, users) => {
       total_assets:         u.total_assets         ?? null,
       volume_weekly:        u.volume_weekly         ?? null,
       commission_weekly:    u.commission_weekly     ?? null,
+      trade_count_30d:      u.trade_count_30d       ?? null,
+      line_msg_count:       u.line_msg_count        ?? null,
       community_interaction: u.community_interaction ?? null,
       rfm_score:            u.rfm_score            ?? null,
       rfm_tag:              u.rfm_tag              ?? null,
+    })
+    count++
+  }
+  return count
+})
+
+/**
+ * 批次寫入 LINE 對話歷史週訊息數（多週，不覆蓋其他週期欄位）
+ * records: Array<{ uid, year_week, line_msg_count }>
+ */
+export const syncLineMsgHistory = db.transaction((records) => {
+  const now = new Date().toISOString()
+  let count = 0
+  for (const r of records) {
+    if (!r.uid || !r.year_week) continue
+    stmtUpsertLineMsgWeek.run({
+      uid:           r.uid,
+      year_week:     r.year_week,
+      record_date:   now,
+      line_msg_count: r.line_msg_count ?? 0,
     })
     count++
   }

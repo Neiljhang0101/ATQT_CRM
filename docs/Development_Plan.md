@@ -75,7 +75,29 @@
 
 ---
 
-## 階段七：GCP 雲端部署
+## 補充模組：Ngrok 內網穿透 ✅ 已完成
+**目標：不部署雲端的情況下，臨時對外開放本機 CRM 系統。**
+- [x] 安裝 `ngrok` 為 devDependencies。
+- [x] 調整 `vite.config.js`：加入 `host: '0.0.0.0'`、`port: 5173`、`strictPort: true`、`allowedHosts: true`。
+- [x] 新增 `npm run share` 快捷指令 (`ngrok http 5173`)。
+- [x] 建立啟動教學文件 `docs/啟動教學.md`。
+> **驗收結果：** `npm run share` 成功產生 `https://xxxxx.ngrok-free.dev` 對外網址，團隊成員可直接存取。
+
+---
+
+## 階段七：分眾走勢儀表板與名單下鑽分析 ✅ 已完成
+**目標：將 Dashboard 升級為互動式戰情室，含日期區間優化與 ECharts 點擊下鑽。**
+- [x] 新增後端 API：`GET /api/db/trend`（分眾走勢聚合）、`GET /api/db/drilldown`（JOIN 名單）、`GET /api/db/kpi`（WoW 比較）。
+- [x] 在 `server/db.js` 新增 `getWeeklyTrend()`、`getWeeklyDrilldown()`、`getLatestTwoWeeksKpi()` 函式。
+- [x] `Dashboard.vue` 整合 `vue-echarts` 堆疊面積圖，X 軸以 dayjs `isoWeek` plugin 將 `2026-W09` 轉換為 `02/23 ~ 03/01`。
+- [x] Tooltip hover 顯示完整日期區間與各分眾人數。
+- [x] 點擊圖表節點觸發下鑽，以 `el-dialog` + `el-table` 顯示 JOIN 名單，提供「查看內頁」按鈕。
+- [x] KPI 卡片新增 WoW 週環比（🔼 +5%）。
+> **驗收結果：** Dashboard 圖表顯示各 RFM 分眾走勢；點擊節點彈出含日期區間標題的名單 Dialog；KPI 顯示與上週比較百分比。
+
+---
+
+## 階段八：GCP 雲端部署
 **目標：將本機完美運作的系統放上雲端，隨時隨地可用。**
 - [ ] 移除 Vite Proxy，改為 GCP API Gateway 或 Node.js 中介層轉發。
 - [ ] 撰寫 Dockerfile 或 Cloud Run 部署腳本。

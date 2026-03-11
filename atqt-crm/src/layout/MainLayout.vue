@@ -25,7 +25,7 @@ function toggleSidebar() {
 }
 
 const menuItems = [
-  { path: '/dashboard', msIcon: 'dashboard', label: '戰情大盤' },
+  { path: '/dashboard', msIcon: 'dashboard', label: '數據總覽' },
   { path: '/crm',       msIcon: 'group',     label: '客戶總表' },
   { path: '/radar',     msIcon: 'bar_chart', label: '痛點雷達' },
   { path: '/campaigns', msIcon: 'flag',      label: '活動追蹤' },

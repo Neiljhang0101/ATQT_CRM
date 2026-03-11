@@ -109,3 +109,40 @@ user_weekly_stats (明細表 — N)
 - **備份資料庫 (.sqlite)：** 觸發 `exportDbFile()` 下載完整二進位
 - **還原資料庫：** `<el-upload>` 接收 .sqlite 檔案，呼叫 `importDbFile()` 覆寫
 - **DB 就緒狀態顯示：** `dbReady` ref 即時顯示資料庫載入狀態
+
+---
+
+## ✅ 補充模組：Ngrok 內網穿透（已完成 2026-03-04）
+
+### 新增功能
+- `vite.config.js` 新增 `host: '0.0.0.0'`、`strictPort: true`、`allowedHosts: true` 以相容 ngrok 随機域名
+- `package.json` 新增 `"share": "ngrok http 5173"` 快捷指令
+- 新增 `docs/啟動教學.md` 提供三步驟啟動教學
+
+---
+
+## ✅ 階段七：分眾走勢儀表板與名單下鑽分析（已完成 2026-03-04）
+
+### 後端新增 API 規格
+| 路由 | 說明 |
+|---|---|
+| `GET /api/db/trend` | 聚合 `user_weekly_stats`：`year_week × rfm_tag × COUNT(uid)` |
+| `GET /api/db/drilldown?year_week=&rfm_tag=` | JOIN `customers` 查詢指定週分眾名單 |
+| `GET /api/db/kpi` | 最新兩週 KPI 合計，用於 WoW 週環比計算 |
+
+### 下鑽 JOIN SQL
+```sql
+SELECT c.uid, c.line_name, c.line_display_name,
+       w.total_assets, w.volume_weekly, w.rfm_score
+FROM user_weekly_stats w
+JOIN customers c ON w.uid = c.uid
+WHERE w.year_week = ? AND w.rfm_tag = ?
+ORDER BY w.total_assets DESC
+```
+
+### Dashboard 分眾走勢圖（`src/views/Dashboard.vue`）
+- **堆疊面積圖 (Stacked Area)：** 以 `vue-echarts` 呈現各 RFM 分眾每週人數走勢
+- **日期區間 UX 轉換：** 使用 `dayjs` + `isoWeek` plugin，將 `2026-W09` 轉換為 `02/23 ~ 03/01`；X 軸 label 與 Tooltip 皆顯示日期區間
+- **ECharts 點擊下鑽：** 點擊圖表節點 → 呼叫 `/api/db/drilldown` → `el-dialog` 顯示表格，標題格式為 `02/23 ~ 03/01 - 核心VIP（共 15 人）`
+- **查看內頁按鈕：** 名單表格提供按鈕跳轉至 `/crm/:uid`
+- **KPI WoW 週環比：** 4 張 KPI 卡片底部顯示與上週比較（🔼 +5% 較上週）

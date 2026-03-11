@@ -6,7 +6,7 @@
 
 import express from 'express'
 import { createReadStream, statSync } from 'fs'
-import { syncUsers, syncLineMsgHistory, getAllCustomers, getAllWeekly, getUserWeeklyHistory, getDbPath } from './db.js'
+import { syncUsers, syncLineMsgHistory, getAllCustomers, getAllWeekly, getUserWeeklyHistory, getDbPath, getWeeklyTrend, getWeeklyDrilldown, getLatestTwoWeeksKpi } from './db.js'
 
 const app = express()
 const PORT = 3001
@@ -81,6 +81,37 @@ app.get('/api/db/weekly', (req, res) => {
 app.get('/api/db/weekly/history/:uid', (req, res) => {
   try {
     res.json(getUserWeeklyHistory(req.params.uid))
+  } catch (e) {
+    res.status(500).json({ ok: false, message: e.message })
+  }
+})
+
+// ── 分眾走勢聚合（Dashboard 圖表）─────────────
+app.get('/api/db/trend', (req, res) => {
+  try {
+    res.json(getWeeklyTrend())
+  } catch (e) {
+    res.status(500).json({ ok: false, message: e.message })
+  }
+})
+
+// ── 點擊下鑽名單 ───────────────────────────────
+app.get('/api/db/drilldown', (req, res) => {
+  try {
+    const { year_week, rfm_tag } = req.query
+    if (!year_week || !rfm_tag) {
+      return res.status(400).json({ ok: false, message: '缺少 year_week 或 rfm_tag' })
+    }
+    res.json(getWeeklyDrilldown(year_week, rfm_tag))
+  } catch (e) {
+    res.status(500).json({ ok: false, message: e.message })
+  }
+})
+
+// ── 最新兩週 KPI（WoW 比較）───────────────────
+app.get('/api/db/kpi', (req, res) => {
+  try {
+    res.json(getLatestTwoWeeksKpi())
   } catch (e) {
     res.status(500).json({ ok: false, message: e.message })
   }

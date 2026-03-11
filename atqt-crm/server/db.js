@@ -238,6 +238,83 @@ export function getUserWeeklyHistory(uid) {
   ).all(uid)
 }
 
+// ── 分眾走勢聚合（Dashboard 圖表用）────────────
+export function getWeeklyTrend() {
+  return db.prepare(
+    `SELECT year_week, rfm_tag, COUNT(uid) AS count
+     FROM user_weekly_stats
+     WHERE rfm_tag IS NOT NULL AND rfm_tag != ''
+     GROUP BY year_week, rfm_tag
+     ORDER BY year_week ASC`
+  ).all()
+}
+
+// ── 點擊下鑽：指定週 + 分眾的名單（JOIN）───────
+export function getWeeklyDrilldown(yearWeek, rfmTag) {
+  return db.prepare(
+    `SELECT c.uid, c.line_name, c.line_display_name,
+            w.total_assets, w.volume_weekly, w.rfm_score
+     FROM user_weekly_stats w
+     JOIN customers c ON w.uid = c.uid
+     WHERE w.year_week = ? AND w.rfm_tag = ?
+     ORDER BY w.total_assets DESC`
+  ).all(yearWeek, rfmTag)
+}
+
+// ── 最新兩週 KPI 合計（WoW 比較用）────────────
+export function getLatestTwoWeeksKpi() {
+  const weeks = db.prepare(
+    `SELECT DISTINCT year_week FROM user_weekly_stats ORDER BY year_week DESC LIMIT 2`
+  ).all().map(r => r.year_week)
+  const result = {}
+  for (const w of weeks) {
+    const row = db.prepare(
+      `SELECT year_week,
+              SUM(total_assets)  AS total_assets,
+              SUM(volume_weekly) AS volume_weekly,
+              COUNT(uid)         AS member_count,
+              SUM(CASE WHEN rfm_tag IN ('核心VIP','高淨值') THEN 1 ELSE 0 END) AS high_value,
+              SUM(CASE WHEN rfm_tag IN ('流失風險','沉睡') THEN 1 ELSE 0 END)  AS risk_count
+       FROM user_weekly_stats WHERE year_week = ?`
+    ).get(w)
+
+    // 活躍用戶：進階群且近30天交易天數 > 10
+    const activeRow = db.prepare(
+      `SELECT COUNT(*) AS active_users
+       FROM user_weekly_stats s
+       JOIN customers c ON c.uid = s.uid
+       WHERE s.year_week = ? AND c.in_advanced_group = 1 AND s.trade_count_30d > 10`
+    ).get(w)
+
+    // 中位數：進階群成員、排除 0 與 NULL，ORDER BY + LIMIT/OFFSET（偶數筆取兩值平均）
+    const medianRow = db.prepare(`
+      SELECT AVG(total_assets) AS median_assets FROM (
+        SELECT s.total_assets
+        FROM user_weekly_stats s
+        JOIN customers c ON c.uid = s.uid
+        WHERE s.year_week = ? AND s.total_assets IS NOT NULL AND s.total_assets > 0
+          AND c.in_advanced_group = 1
+        ORDER BY s.total_assets
+        LIMIT 2 - (
+          SELECT COUNT(*) FROM user_weekly_stats s2
+          JOIN customers c2 ON c2.uid = s2.uid
+          WHERE s2.year_week = ? AND s2.total_assets IS NOT NULL AND s2.total_assets > 0
+            AND c2.in_advanced_group = 1
+        ) % 2
+        OFFSET (
+          SELECT (COUNT(*) - 1) / 2 FROM user_weekly_stats s3
+          JOIN customers c3 ON c3.uid = s3.uid
+          WHERE s3.year_week = ? AND s3.total_assets IS NOT NULL AND s3.total_assets > 0
+            AND c3.in_advanced_group = 1
+        )
+      )
+    `).get(w, w, w)
+
+    result[w] = { ...row, active_users: activeRow?.active_users ?? 0, median_assets: medianRow?.median_assets ?? null }
+  }
+  return { weeks, data: result }
+}
+
 // ── 匯出二進位 ─────────────────────────────────
 export function getDbPath() { return DB_PATH }
 

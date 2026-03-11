@@ -117,8 +117,28 @@ function weekKeyToRange(sundayKey) {
   return `${fmt(sun)}~${fmt(sat)}`
 }
 
-const lineStats = computed(() => {
+// 統一將 line_weekly_msgs 的 key 正規化為 YYYY-MM-DD（週日）
+// 新格式（YYYY-MM-DD）優先；舊格式（YYYY-Www）只在對應週尚無值時才填入
+const normalizedMsgs = computed(() => {
   const msgs = user.value?.line_weekly_msgs
+  if (!msgs || Object.keys(msgs).length === 0) return {}
+  const isNew = (k) => /^\d{4}-\d{2}-\d{2}$/.test(k)
+  const toSunday = (k) => {
+    const m = k.match(/^(\d{4})-W(\d{2})$/)
+    if (!m) return k
+    const year = Number(m[1]), week = Number(m[2])
+    const jan4 = new Date(Date.UTC(year, 0, 4))
+    const mon = new Date(jan4.getTime() - ((jan4.getUTCDay() || 7) - 1) * 86400000 + (week - 1) * 7 * 86400000)
+    return new Date(mon.getTime() - 86400000).toISOString().slice(0, 10)
+  }
+  const result = {}
+  for (const [k, cnt] of Object.entries(msgs)) if (isNew(k)) result[k] = cnt
+  for (const [k, cnt] of Object.entries(msgs)) if (!isNew(k)) { const sk = toSunday(k); if (!(sk in result)) result[sk] = cnt }
+  return result
+})
+
+const lineStats = computed(() => {
+  const msgs = normalizedMsgs.value
   if (!msgs || Object.keys(msgs).length === 0) return null
   const weeks = Object.keys(msgs).sort()
   const latestWeek  = weeks[weeks.length - 1]
@@ -138,6 +158,51 @@ const lineStats = computed(() => {
     }
   }
   return { latestWeek, dateRange, latestCount, prevCount, prevWeek, changePct, changeDir, total }
+})
+
+// 走勢圖彈窗 ─────────────────────────────────────────────
+const showChartDialog = ref(false)
+
+const chartData = computed(() => {
+  const normalized = normalizedMsgs.value
+  if (!normalized || Object.keys(normalized).length === 0) return []
+  const weeks = Object.keys(normalized).sort()
+  return weeks.slice(-13).map(w => ({
+    key: w,
+    shortLabel: (() => { const r = weekKeyToRange(w); return r ? r.split('~')[0] : w.slice(-5) })(),
+    fullLabel: weekKeyToRange(w) ?? w,
+    count: normalized[w] || 0
+  }))
+})
+
+const chartSvg = computed(() => {
+  const data = chartData.value
+  if (!data.length) return null
+  const PAD = { top: 24, right: 16, bottom: 54, left: 44 }
+  const W = 660, H = 280
+  const chartW = W - PAD.left - PAD.right
+  const chartH = H - PAD.top - PAD.bottom
+  const maxCount = Math.max(...data.map(d => d.count), 1)
+  const slotW = chartW / data.length
+  const barW = Math.min(slotW * 0.65, 30)
+  const bars = data.map((d, i) => {
+    const bh = Math.max(d.count / maxCount * chartH, d.count > 0 ? 2 : 0)
+    return {
+      ...d,
+      x: PAD.left + i * slotW + (slotW - barW) / 2,
+      y: PAD.top + chartH - bh,
+      w: barW,
+      h: bh,
+      labelX: PAD.left + i * slotW + slotW / 2,
+      labelY: PAD.top + chartH + 16,
+      isLatest: i === data.length - 1
+    }
+  })
+  const guides = [0.25, 0.5, 0.75, 1.0].map(pct => ({
+    y: PAD.top + chartH - pct * chartH,
+    value: Math.round(pct * maxCount)
+  }))
+  return { W, H, PAD, chartW, chartH, maxCount, bars, guides }
 })
 
 function tagBadgeStyle(tag) {
@@ -411,8 +476,14 @@ function tagBadgeStyle(tag) {
                   </div>
                 </div>
                 <div>
-                  <div class="text-sm mb-1" style="color:#606266;">
+                  <div class="text-sm mb-1 flex items-center gap-1" style="color:#606266;">
                     社群互動<span v-if="lineStats && lineStats.dateRange !== '--'">({{ lineStats.dateRange }})</span>
+                    <button v-if="chartData.length"
+                      @click="showChartDialog = true"
+                      class="ml-0.5 w-5 h-5 flex items-center justify-center rounded transition-colors hover:bg-[#ecf5ff] hover:text-[#409EFF]"
+                      style="color:#c0c4cc;"
+                      title="查看互動走勢圖"
+                    ><span class="material-symbols-outlined text-[16px]">bar_chart</span></button>
                   </div>
                   <div v-if="lineStats" class="font-medium flex items-center gap-2" style="color:#303133;">
                     <span>{{ lineStats.latestCount }} 則</span>
@@ -542,5 +613,82 @@ function tagBadgeStyle(tag) {
 
     </div>
   </div>
+
+  <!-- 社群互動走勢圖 彈窗 -->
+  <el-dialog
+    v-model="showChartDialog"
+    title="社群互動走勢圖"
+    width="720px"
+    :append-to-body="true"
+    :close-on-click-modal="true"
+  >
+    <div v-if="chartSvg" class="pb-2">
+      <svg
+        :viewBox="`0 0 ${chartSvg.W} ${chartSvg.H}`"
+        width="100%"
+        :height="chartSvg.H"
+        style="overflow:visible;display:block;"
+      >
+        <!-- 橫向參考線 + Y 軸標籤 -->
+        <template v-for="g in chartSvg.guides" :key="'g' + g.value">
+          <line
+            :x1="chartSvg.PAD.left" :y1="g.y"
+            :x2="chartSvg.PAD.left + chartSvg.chartW" :y2="g.y"
+            stroke="#f0f2f5" stroke-width="1"
+          />
+          <text :x="chartSvg.PAD.left - 7" :y="g.y + 4"
+            text-anchor="end" font-size="11" fill="#b0b8c1">{{ g.value }}</text>
+        </template>
+
+        <!-- X 軸底線 -->
+        <line
+          :x1="chartSvg.PAD.left" :y1="chartSvg.PAD.top + chartSvg.chartH"
+          :x2="chartSvg.PAD.left + chartSvg.chartW" :y2="chartSvg.PAD.top + chartSvg.chartH"
+          stroke="#e4e7ed" stroke-width="1.5"
+        />
+
+        <!-- 柱狀條 -->
+        <template v-for="bar in chartSvg.bars" :key="bar.key">
+          <rect
+            :x="bar.x" :y="bar.y" :width="bar.w" :height="bar.h"
+            :fill="bar.isLatest ? '#409EFF' : 'rgba(64,158,255,0.3)'"
+            rx="2"
+          />
+          <!-- 數值標 -->
+          <text v-if="bar.count > 0"
+            :x="bar.x + bar.w / 2" :y="bar.y - 4"
+            text-anchor="middle" font-size="10"
+            :fill="bar.isLatest ? '#409EFF' : '#909399'"
+            font-weight="600"
+          >{{ bar.count }}</text>
+          <!-- X 軸週標籤（斜排） -->
+          <text
+            :x="bar.labelX" :y="bar.labelY"
+            text-anchor="end" font-size="10" fill="#909399"
+            :transform="`rotate(-40, ${bar.labelX}, ${bar.labelY})`"
+          >{{ bar.shortLabel }}</text>
+        </template>
+      </svg>
+
+      <div class="flex items-center justify-between mt-3 px-1">
+        <div class="flex items-center gap-3 text-xs" style="color:#909399;">
+          <span class="inline-flex items-center gap-1">
+            <span class="inline-block w-3 h-3 rounded-sm" style="background:#409EFF;"></span> 最新一週
+          </span>
+          <span class="inline-flex items-center gap-1">
+            <span class="inline-block w-3 h-3 rounded-sm" style="background:rgba(64,158,255,0.3);"></span> 歷史週
+          </span>
+        </div>
+        <div class="text-xs" style="color:#909399;">
+          共 {{ chartData.length }} 週 ｜ 累計 <span class="font-semibold" style="color:#303133;">{{ lineStats?.total?.toLocaleString() }}</span> 則
+        </div>
+      </div>
+    </div>
+    <div v-else class="py-10 text-center" style="color:#909399;">
+      <span class="material-symbols-outlined text-4xl block mb-2" style="color:#dcdfe6;">bar_chart</span>
+      尚無社群互動資料
+    </div>
+  </el-dialog>
+
 </template>
 

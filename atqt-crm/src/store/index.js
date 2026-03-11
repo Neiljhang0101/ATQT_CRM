@@ -83,9 +83,15 @@ export const useCrmStore = defineStore('crm', () => {
       if (customers.length > 0 && users.value.length === 0) {
         // 建立 uid → 最新週資料 Map
         const weeklyMap = {}
+        // 建立 uid → 多週訊息數 Map（走勢圖用）
+        const weeklyMsgsMap = {}
         for (const w of weekly) {
           if (!weeklyMap[w.uid] || w.year_week > weeklyMap[w.uid].year_week) {
             weeklyMap[w.uid] = w
+          }
+          if (w.line_msg_count != null && w.line_msg_count > 0) {
+            if (!weeklyMsgsMap[w.uid]) weeklyMsgsMap[w.uid] = {}
+            weeklyMsgsMap[w.uid][w.year_week] = w.line_msg_count
           }
         }
         users.value = customers.map(c => createDefaultUser({
@@ -115,6 +121,7 @@ export const useCrmStore = defineStore('crm', () => {
           line_msg_count_7d:     weeklyMap[c.uid]?.line_msg_count       ?? 0,
           community_interaction: weeklyMap[c.uid]?.community_interaction ?? null,
           rfm_score_tag:         weeklyMap[c.uid]?.rfm_tag              ?? null,
+          line_weekly_msgs:      weeklyMsgsMap[c.uid]                   ?? {},
         }))
         // 重算 RFM
         users.value = users.value.map(u => {
@@ -376,27 +383,36 @@ export const useCrmStore = defineStore('crm', () => {
     const commissionRaw =
       commissionResult.status === 'fulfilled' ? commissionResult.value : []
 
-    const commissionMap = {}   // uid → { volume, lastTime, hasRecentTrade }
-    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
+    const commissionMap = {}   // uid → { volume, lastTime, hasRecentTrade, tradeDays }
+    const sevenDaysAgo  = Date.now() - 7  * 24 * 60 * 60 * 1000
+    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000
     if (Array.isArray(commissionRaw)) {
       commissionRaw.forEach(item => {
         const uid = String(item.uid ?? '')
         if (!uid) return
         if (!commissionMap[uid]) {
-          commissionMap[uid] = { volume: 0, lastTime: null, hasRecentTrade: false, tradeCount: 0 }
+          commissionMap[uid] = { volume: 0, lastTime: null, hasRecentTrade: false, tradeDays: new Set() }
         }
         const vol = parseFloat(item.tradingVolume ?? 0) || 0
         commissionMap[uid].volume += vol
-        if (vol > 0) commissionMap[uid].tradeCount += 1
+        // 近 30 天內有交易量 → 記錄日期（用 Set 去重複，得到交易天數）
+        const t = item.commissionTime ?? null
+        if (vol > 0 && t && t >= thirtyDaysAgo) {
+          const dateStr = new Date(t).toISOString().slice(0, 10)
+          commissionMap[uid].tradeDays.add(dateStr)
+        }
         // hasRecentTrade 僅計近 7 天（用於心跳更新 last_active_date）
-        if (vol > 0 && item.commissionTime >= sevenDaysAgo) {
+        if (vol > 0 && t && t >= sevenDaysAgo) {
           commissionMap[uid].hasRecentTrade = true
         }
-        const t = item.commissionTime ?? null
         if (t && (!commissionMap[uid].lastTime || t > commissionMap[uid].lastTime)) {
           commissionMap[uid].lastTime = t
         }
       })
+    }
+    // tradeDays.size = 近 30 天內不重複的有交易天數
+    for (const cm of Object.values(commissionMap)) {
+      cm.tradeCount = cm.tradeDays.size
     }
 
     // ── 解析子帳戶資產 → uid → USDT balance（選用，API 權限不足時略過）──
@@ -691,26 +707,30 @@ export const useCrmStore = defineStore('crm', () => {
   }
 
   /**
-   * 只同步傭金明細（近 35 天交易量、最後交易日）
+   * 只同步傭金明細（近 30 天交易量、最後交易日）
    */
   async function fetchCommissionOnly(apiInstance, sourceLabel) {
     const commissionRaw = await fetchAllCommissionPages(apiInstance, sourceLabel)
     const todayStr = new Date().toISOString().slice(0, 10)
-    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
+    const sevenDaysAgo  = Date.now() - 7  * 24 * 60 * 60 * 1000
+    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000
     const commissionMap = {}
     if (Array.isArray(commissionRaw)) {
       commissionRaw.forEach(item => {
         const uid = String(item.uid ?? '')
         if (!uid) return
-        if (!commissionMap[uid]) commissionMap[uid] = { volume: 0, lastTime: null, hasRecentTrade: false, tradeCount: 0 }
+        if (!commissionMap[uid]) commissionMap[uid] = { volume: 0, lastTime: null, hasRecentTrade: false, tradeDays: new Set() }
         const vol = parseFloat(item.tradingVolume ?? 0) || 0
         commissionMap[uid].volume += vol
-        if (vol > 0) commissionMap[uid].tradeCount += 1
-        if (vol > 0 && item.commissionTime >= sevenDaysAgo) commissionMap[uid].hasRecentTrade = true
         const t = item.commissionTime ?? null
+        if (vol > 0 && t && t >= thirtyDaysAgo) {
+          commissionMap[uid].tradeDays.add(new Date(t).toISOString().slice(0, 10))
+        }
+        if (vol > 0 && t && t >= sevenDaysAgo) commissionMap[uid].hasRecentTrade = true
         if (t && (!commissionMap[uid].lastTime || t > commissionMap[uid].lastTime)) commissionMap[uid].lastTime = t
       })
     }
+    for (const cm of Object.values(commissionMap)) cm.tradeCount = cm.tradeDays.size
     const merged = Object.entries(commissionMap).map(([uid, cm]) => ({
       uid,
       volume_30d: cm.volume > 0 ? cm.volume : null,
